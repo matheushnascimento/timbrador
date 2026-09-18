@@ -47,9 +47,10 @@ eles o sumário sai vazio e o Word atualiza ao abrir. `TIMBRADOR_SOFFICE` troca 
 comando do LibreOffice (necessário em sandboxes onde `soffice` precisa de
 wrapper).
 
-**Nesta máquina não há LibreOffice nem `pdftotext`.** Enquanto for assim, o
-caminho do PDF e da numeração do sumário não é exercitado localmente:
-`sudo apt install -y libreoffice-writer poppler-utils`.
+Nesta máquina os dois estão instalados (18/09/2026): LibreOffice 24.2.7
+(`soffice`) e poppler-utils 24.02 (`pdftotext`, `pdftoppm`). O caminho do PDF e
+da numeração do sumário **é** exercitado localmente — se o aviso "sumário sem
+números de página" reaparecer, alguma das duas sumiu do PATH.
 
 ## Invariantes
 
@@ -105,7 +106,8 @@ ideias para as partes que ele não cobria.
 Coberto: documentos curtos e longos; estados minuta, em revisão e oficial;
 empresa sem logo; empresa com cadastro incompleto; casos que devem ser
 recusados; XML validado contra o schema do Word; conferência visual em PDF
-(feita no ambiente anterior, com LibreOffice).
+(refeita neste ambiente em 18/09/2026: capa, folha de controle, sumário com
+números reais e página interna do POP longo, mais a página única do CI curto).
 
 **Não coberto ainda:** figuras JPEG grandes, tabelas que quebram entre páginas,
 apêndices com muitos níveis, documentos acima de ~30 páginas, e a aparência real
