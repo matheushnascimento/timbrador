@@ -1,0 +1,64 @@
+{
+  "empresa": "ACME",
+  "tipo": "POP", "area": "ECO", "numero": 3, "ano": 2026,
+  "titulo": "Cadastro de anúncios no marketplace",
+  "subtitulo": "Fluxo padrão da equipe de e-commerce",
+  "titulo_curto": "POP – Cadastro de anúncios",
+  "estado": "OFICIAL", "versao": "1.0", "data_emissao": "18/09/2026",
+  "classificacao": "Interno",
+  "elaborado_por": "[definir]", "revisado_por": "[definir]",
+  "aprovado_por": "Fulano de Tal", "cargo_aprovador": "Diretoria de E-commerce",
+  "data_aprovacao": "18/09/2026",
+  "vigencia": "a partir da aprovação",
+  "historico": [
+    {"versao": "1.0", "data": "18/09/2026", "descricao": "Emissão inicial.", "responsavel": "[definir]"}
+  ],
+  "sumario": true,
+  "corpo": [
+    {"t": "h1", "texto": "Objetivo"},
+    {"t": "p", "texto": "Estabelecer o procedimento de cadastro de anúncios, garantindo padronização de título, descrição e imagem."},
+    {"t": "h1", "texto": "Aplicação"},
+    {"t": "p", "texto": "Aplica-se à equipe de e-commerce e aos terceiros contratados para apoio ao cadastro."},
+    {"t": "h1", "texto": "Procedimento"},
+    {"t": "h2", "texto": "Preparação do material"},
+    {"t": "p", "texto": "Antes do cadastro, o responsável reúne as informações do produto e confere a ficha técnica."},
+    {"t": "numerada", "itens": [
+      "conferir a ficha técnica do fornecedor;",
+      "validar as medidas e o peso da embalagem;",
+      "selecionar as imagens aprovadas pelo marketing."
+    ]},
+    {"t": "h2", "texto": "Publicação"},
+    {"t": "p", "texto": "A publicação segue os prazos do Quadro 1 e depende de conferência final."},
+    {"t": "tabela", "tipo": "Quadro", "titulo": "Prazos por etapa",
+      "cabecalho": ["Etapa", "Responsável", "Prazo"],
+      "linhas": [["Preparação", "Analista de e-commerce", "1 dia útil"],
+                 ["Revisão", "Coordenação", "1 dia útil"],
+                 ["Publicação", "Analista de e-commerce", "no mesmo dia"]],
+      "larguras": [4, 4, 3], "fonte": "Elaborado pela empresa (2026)."},
+    {"t": "h3", "texto": "Conferência final"},
+    {"t": "checklist", "itens": [
+      "título dentro do limite de caracteres;",
+      "descrição sem promessa não verificável;",
+      "preço e estoque conferidos."
+    ]},
+    {"t": "nota", "texto": "Divergência de estoque bloqueia a publicação até a correção."},
+    {"t": "h1", "texto": "Responsabilidades"},
+    {"t": "campos", "itens": [
+      ["Analista", "Executar o cadastro e a conferência final."],
+      ["Coordenação", "Revisar e autorizar a publicação."]
+    ]},
+    {"t": "citacao", "texto": "A padronização da informação de produto reduz a taxa de devolução e melhora a posição do anúncio na busca.", "fonte": "(Silva, 2025, p. 10)."}
+  ],
+  "referencias": [
+    "SILVA, João. **Gestão de marketplaces**: fundamentos. São Paulo: Editora Exemplo, 2025.",
+    "ASSOCIAÇÃO BRASILEIRA DE NORMAS TÉCNICAS. **NBR 6024**: numeração progressiva das seções. Rio de Janeiro: ABNT, 2012."
+  ],
+  "glossario": [
+    ["Anúncio", "publicação de um produto em canal de venda."],
+    ["Ficha técnica", "conjunto de dados descritivos fornecidos pelo fabricante."]
+  ],
+  "apendices": [
+    {"titulo": "Modelo de título de anúncio",
+     "corpo": [{"t": "codigo", "texto": "MARCA MODELO CARACTERISTICA TAMANHO\nACME 1200 Compressor 50L"}]}
+  ]
+}

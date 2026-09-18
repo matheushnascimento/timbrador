@@ -1,0 +1,31 @@
+{
+  "empresa": "ACME",
+  "tipo": "CI", "area": "RH", "numero": 12, "ano": 2026,
+  "titulo": "Alteração do horário de expediente",
+  "estado": "MINUTA", "versao": "1.0-r1", "data_emissao": "18/09/2026",
+  "classificacao": "Interno",
+  "elaborado_por": "[definir]",
+  "identificacao": [
+    ["Destinatário", "Todos os colaboradores"],
+    ["Assunto", "Novo horário de expediente a partir de outubro"]
+  ],
+  "corpo": [
+    {"t": "p", "texto": "Comunicamos a alteração do horário de expediente, conforme deliberação da diretoria registrada em [definir]."},
+    {"t": "campos", "itens": [["Vigência", "A partir de 01/10/2026"], ["Abrangência", "Unidade de Campinas – SP"]]},
+    {"t": "p", "texto": "O novo horário observa as seguintes condições:"},
+    {"t": "alineas", "itens": [
+      "entrada às 07h30 e saída às 17h18, de segunda a sexta-feira;",
+      {"texto": "intervalo de uma hora para refeição, com janela flexível;", "sub": ["início entre 11h30 e 13h00;"]},
+      "banco de horas mantido nas regras vigentes."
+    ]},
+    {"t": "destaque", "texto": "A adesão ao horário flexível depende de acordo individual escrito.", "nivel": "atencao"},
+    {"t": "tabela", "tipo": "Quadro", "titulo": "Horário por turno",
+      "cabecalho": ["Turno", "Entrada", "Saída"],
+      "linhas": [["Administrativo", "07h30", "17h18"], ["Expedição", "06h00", "15h48"]],
+      "larguras": [4, 3, 3], "alinhamento": ["left", "center", "center"],
+      "fonte": "Elaborado pela empresa (2026)."},
+    {"t": "p", "texto": "Conforme Quadro 1, os turnos passam a vigorar de forma escalonada."},
+    {"t": "local_data", "data": "18/09/2026"},
+    {"t": "assinaturas", "itens": [{"nome": "[definir]", "cargo": "Diretoria Administrativa"}]}
+  ]
+}

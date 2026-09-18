@@ -1,0 +1,32 @@
+{
+  "_instrucoes": "Marca FICTÍCIA, só para os testes de fumaça. Não é marca de cliente. ACME tem cadastro completo (emite OFICIAL); SEMLG está incompleta e sem logo (só emite estado não oficial).",
+  "organizacao": "Grupo de Teste",
+  "empresa_padrao": "ACME",
+  "politica": {
+    "codigo": "ACME-POL-ADM-001",
+    "titulo": "Padrão de Documentação Oficial"
+  },
+  "empresas": [
+    {
+      "sigla": "ACME",
+      "marca": "Acme",
+      "razao_social": "Acme Comércio de Testes Ltda",
+      "documento_rotulo": "CNPJ",
+      "documento": "00.000.000/0001-00",
+      "cidade": "Campinas – SP",
+      "cor": "1F3864",
+      "logo": "../skills/timbrador/assets/logo-exemplo.png"
+    },
+    {
+      "sigla": "SEMLG",
+      "marca": "Sem Logo",
+      "razao_social": "[definir]",
+      "documento_rotulo": "CNPJ",
+      "documento": "[definir]",
+      "cidade": "Campinas – SP",
+      "cor": "8C3B2E"
+    }
+  ],
+  "areas_extra": {},
+  "tipos_extra": {}
+}
