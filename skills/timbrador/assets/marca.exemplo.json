@@ -1,0 +1,23 @@
+{
+  "_instrucoes": "Copie este arquivo como marca.json e preencha. 'logo' aceita caminho (relativo a este arquivo) de PNG/JPEG ou data URI; use --embutir-logos para gerar uma versão de arquivo único. Empresa com razao_social ou documento em [definir] só emite RASCUNHO, MINUTA ou EM_REVISAO.",
+  "organizacao": "Sua Organização",
+  "empresa_padrao": "SUA",
+  "politica": {
+    "codigo": "SUA-POL-ADM-001",
+    "titulo": "Padrão de Documentação Oficial"
+  },
+  "empresas": [
+    {
+      "sigla": "SUA",
+      "marca": "Sua Marca",
+      "razao_social": "[definir]",
+      "documento_rotulo": "CNPJ",
+      "documento": "[definir]",
+      "cidade": "Cidade – UF",
+      "cor": "1F3864",
+      "logo": "logo-exemplo.png"
+    }
+  ],
+  "areas_extra": {},
+  "tipos_extra": {}
+}

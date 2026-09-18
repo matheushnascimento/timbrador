@@ -1,0 +1,5 @@
+{
+  "name": "timbrador",
+  "version": "1.0.0",
+  "description": "Timbrador white label: converte qualquer conteúdo em documento Word no Padrão de Documentação Oficial (ABNT + logo, cor e dados da sua organização, lidos de um marca.json), com código, versão, faixa e marca d'água de estado. Use ao formalizar CI, comunicado, termo, contrato, manual, política, POP ou relatório, ou para configurar o papel timbrado da sua empresa."
+}

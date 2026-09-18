@@ -1,0 +1,26 @@
+# --- Entrega original (o conteúdo já está extraído e versionado) ---
+Timbrador-white-label-v1.zip
+
+# --- Saídas do gerador ---
+# Documento gerado nunca entra no repositório: é produto, não fonte.
+*.docx
+*.pdf
+/saida/
+/out/
+
+# --- Marca real de organização ---
+# Só marca.exemplo.json e as marcas de teste são versionadas.
+# Dado de empresa real (razão social, CNPJ) não volta para o código.
+marca.json
+skills/timbrador/assets/marca.json
+*_portatil.json
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+
+# --- Editor / SO ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
