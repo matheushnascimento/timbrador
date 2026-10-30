@@ -81,7 +81,20 @@
   .marca-caixa.vazia { border-color:#C99700; background:#fdf8ec; }
   #marca-texto { width:100%; min-height:120px; margin-top:6px; font:13px/1.4 Consolas, "Courier New", monospace; padding:8px; border:1px solid var(--linha); border-radius:8px; box-sizing:border-box; }
   footer { text-align:center; color:var(--suave); font-size:12px; margin-top:14px; }
-  @media (max-width:480px) { .grade { grid-template-columns:1fr; } .cartao { padding:20px; } }
+  #bloco-rel { margin-top:14px; padding:12px 14px; border-left:3px solid #1E7B3C; background:#f2f8f4; border-radius:0 8px 8px 0; font-size:14px; }
+  #bloco-rel label { margin-top:12px; }
+  #bloco-rel textarea { width:100%; font:inherit; font-size:14px; padding:8px 10px; border:1px solid var(--linha); border-radius:8px; box-sizing:border-box; }
+  .rel-topo { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:baseline; }
+  #rel-plano { color:var(--suave); }
+  .rel-grade3 { grid-template-columns:1.4fr .6fr 1fr; }
+  .rel-grade-comp { grid-template-columns:1.6fr 1.2fr 1fr; }
+  .rel-rodadas { width:100%; border-collapse:collapse; margin-top:10px; font-size:12px; background:#fff; }
+  .rel-rodadas th, .rel-rodadas td { border:1px solid var(--linha); padding:4px 6px; text-align:left; vertical-align:top; }
+  .rel-rodadas th { background:#eef0ee; }
+  .rel-rodadas td { color:#555; }
+  .rel-rodadas td:first-child::before { content:"🔒 "; }
+  #rel-aviso:not(:empty) { margin-top:8px; color:#8a6a00; font-weight:600; }
+  @media (max-width:480px) { .grade, .rel-grade3, .rel-grade-comp { grid-template-columns:1fr; } .cartao { padding:20px; } .rel-rodadas { font-size:11px; } }
 </style>
 </head>
 <body>
@@ -164,6 +177,48 @@
     <select id="estado"></select>
     <div class="dica" id="estado-dica"></div>
 
+    <label class="check" id="bloco-rel-conducao" hidden><input type="checkbox" id="rel-conducao"><span><strong>Relatório de condução de projeto</strong>: uma rodada por reunião, com o número do plano do projeto</span></label>
+    <div id="bloco-rel" hidden>
+      <div class="rel-topo"><strong id="rel-titulo">Relatório de condução</strong> <span id="rel-plano"></span></div>
+      <div class="dica">Número herdado do plano do projeto. Cada rodada é uma versão oficial nova, publicada pela coordenação (em <em>Aprovado por</em>), sem em aprovação e sem cópia obsoleta. Rodada publicada não se reescreve.</div>
+      <table class="rel-rodadas" id="rel-rodadas" hidden><thead><tr><th>Nº</th><th>Data</th><th>O que se fez</th><th>Compromisso</th><th>Avanço</th></tr></thead><tbody></tbody></table>
+      <div class="dica" id="rel-aviso"></div>
+      <div id="rel-form">
+        <div class="grade rel-grade3">
+          <div><label for="rel-tipo">Registro</label>
+            <select id="rel-tipo"><option value="abertura">Abertura (rodada 0)</option><option value="rodada">Rodada (reunião)</option><option value="replanejamento">Replanejamento</option>
+              <option value="parada">Parada declarada</option><option value="retomada">Retomada</option><option value="correcao">Correção de rodada</option><option value="encerramento">Encerramento</option></select></div>
+          <div><label for="rel-n">Nº</label><input type="number" id="rel-n" min="0"></div>
+          <div><label for="rel-data">Data</label><input type="date" id="rel-data"></div>
+        </div>
+        <div class="rel-so" data-tipos="correcao"><label for="rel-corrige">Rodada corrigida</label><input type="number" id="rel-corrige" min="0"></div>
+        <div class="rel-so" data-tipos="replanejamento"><label for="rel-plano-versao">Nova versão do plano</label><input type="text" id="rel-plano-versao" placeholder="Ex.: 1.1"></div>
+        <div class="rel-so grade" data-tipos="encerramento">
+          <div><label for="rel-termo">Termo de encerramento</label><input type="text" id="rel-termo" placeholder="Ex.: ACME-TER-ECO-002/2026"></div>
+          <div><label for="rel-situacao">Situação</label><select id="rel-situacao"><option value="concluído">Concluído</option><option value="cancelado">Cancelado</option></select></div>
+        </div>
+        <label for="rel-feito" id="rel-feito-rotulo">O que se fez desde a rodada anterior</label>
+        <textarea id="rel-feito" rows="3"></textarea>
+        <div class="rel-so" data-tipos="abertura rodada replanejamento retomada">
+          <label>Compromisso seguinte</label>
+          <div class="grade rel-grade-comp">
+            <div><input type="text" id="rel-oque" placeholder="O quê"></div>
+            <div><input type="text" id="rel-quem" placeholder="Quem"></div>
+            <div><input type="date" id="rel-ate" title="Até quando"></div>
+          </div>
+        </div>
+        <div class="rel-so" data-tipos="rodada">
+          <label for="rel-avanco">Avanço</label>
+          <select id="rel-avanco"><option value="">—</option><option value="sim">Sim: mudou de fase ou entregou o compromisso da rodada anterior</option><option value="nao">Não</option></select>
+          <div class="grade" id="rel-sem-avanco" hidden>
+            <div><label for="rel-travou">O que travou</label><input type="text" id="rel-travou"></div>
+            <div><label for="rel-depende">De quem depende</label><input type="text" id="rel-depende"></div>
+          </div>
+        </div>
+        <label class="check" id="bloco-rel-retirar" hidden><input type="checkbox" id="rel-retirar" checked><span>Retirar da pasta a versão anterior (<strong id="rel-versao-anterior"></strong>), que a nova contém inteira</span></label>
+      </div>
+    </div>
+
     <label class="check" id="bloco-com-assinatura"><input type="checkbox" id="com_assinatura"><span><strong>Com assinatura</strong>: o documento termina com local, data e a assinatura de cada envolvido</span></label>
     <div id="bloco-envolvidos" hidden>
       <div class="envolvidos-topo"><span>Nome</span><span>Cargo</span><span>Papel</span><span></span></div>
@@ -189,7 +244,7 @@
     <div class="so-oficial">
       <div class="grade">
         <div><label for="aprovado_por">Aprovado por *</label><input type="text" id="aprovado_por"></div>
-        <div><label for="data_aprovacao">Data da aprovação *</label><input type="date" id="data_aprovacao"></div>
+        <div id="bloco-data-aprovacao"><label for="data_aprovacao">Data da aprovação *</label><input type="date" id="data_aprovacao"></div>
       </div>
       <div id="bloco-obsoleto-anterior" hidden>
         <label class="check"><input type="checkbox" id="obsoletar_anterior" checked><span>Gerar também a versão substituída (<strong id="versao-anterior"></strong>) marcada como <strong>obsoleta</strong></span></label>
@@ -1090,12 +1145,12 @@ function montar(spec, conteudo) {
 }
 
 const TIPOS_REL = { image: "image", header: "header", footer: "footer", styles: "styles", numbering: "numbering", settings: "settings", customXml: "customXml" };
-const VERSAO_TIMBRADOR = "2026-09-16";
+const VERSAO_TIMBRADOR = "2026-10-30";
 const NS_FICHA = "urn:timbrador:ficha";
 const CAMPOS_FICHA = ["empresa", "tipo", "area", "area_nome", "numero", "ano", "codigo", "versao", "estado", "variante", "titulo", "subtitulo", "titulo_curto",
   "classificacao", "local", "data_emissao", "elaborado_por", "revisado_por", "aprovado_por", "cargo_aprovador", "data_aprovacao", "vigencia",
   "substitui", "substituido_por", "motivo_obsoleto", "identificacao", "historico", "modelo", "com_assinatura", "envolvidos", "assinatura_formato",
-  "assinaturas_previstas", "com_anexos", "anexos_externos", "projeto"];
+  "assinaturas_previstas", "com_anexos", "anexos_externos", "projeto", "plano", "rodadas"];
 function fichaDe(spec) {
   const f = {};
   for (const k of CAMPOS_FICHA) { const v = spec[k]; if (v !== undefined && v !== null && v !== "" && !(Array.isArray(v) && !v.length)) f[k] = k === "numero" && /^\d+$/.test(String(v)) ? parseInt(v, 10) : v; }
@@ -1217,8 +1272,15 @@ const registroDe = (spec, arquivo) => ({
   numero: parseInt(spec.numero, 10) || null, ano: spec.ano || null, versao: spec.versao, estado: spec.estado,
   data: spec.data_aprovacao || spec.data_emissao, responsavel: spec.elaborado_por || "",
   substituido_por: spec.estado === "OBSOLETO" ? (spec.substituido_por || undefined) : undefined, arquivo,   // só vale para obsoleto
-  projeto: spec.projeto || undefined
+  projeto: spec.projeto || undefined,
+  // relatório de condução: o plano e o termo que o encerrou (o SHA-256 das rodadas é calculado à parte: registroRel)
+  plano: spec.tipo === "REL" && spec.rodadas && spec.rodadas.length ? spec.plano : undefined,
+  encerrado_por: spec.tipo === "REL" && encerramentoRel(spec.rodadas) ? encerramentoRel(spec.rodadas).termo : undefined
 });
+async function registroRel(reg, spec) {
+  if (spec.tipo === "REL" && spec.rodadas && spec.rodadas.length) reg.rodadas_sha256 = await digitaisRodadas(spec.rodadas);
+  return reg;
+}
 const chaveRegistro = r => r.numero ? r.codigo : `${r.codigo}|${r.arquivo || ""}`;
 function mesclarLista(lista, registro) {
   const l = listaNormalizar(lista);
@@ -1240,6 +1302,192 @@ function mesclarLista(lista, registro) {
 }
 const agoraBR = () => { const d = new Date(); const p = n => String(n).padStart(2, "0"); return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`; };
 const listaTexto = lista => JSON.stringify(listaNormalizar(lista), null, 2);
+
+/* ======================================================================= relatório de condução (REL)
+   Relatório de condução de projeto (norma interna, modelo no Apêndice F). Um relatório por projeto, com o número do plano (herdado, não
+   reservado). Só recebe linhas novas: cada rodada é uma versão oficial nova (1.1, 1.2…), publicada pela coordenação
+   sem passar por em aprovação e sem cópia obsoleta. A lista mestra guarda o SHA-256 de cada rodada publicada, e a
+   rodada nova é recusada se uma linha antiga mudou. As rodadas ficam na ficha ("rodadas"); o Quadro de rodadas do
+   corpo é refeito a partir delas. Mesmas regras do gerador (regras_rel) e do inventariar.ps1. */
+const EVENTOS_REL = { abertura: "", rodada: "", replanejamento: "Replanejamento", parada: "Parada declarada",
+  retomada: "Retomada", correcao: "Correção", encerramento: "Encerramento" };
+const CAB_RODADAS = ["Nº", "Data", "O que se fez", "Compromisso seguinte (o quê · quem · até)", "Avanço"];
+const NOTA_RODADAS = "Só se acrescentam linhas. Rodada publicada não se reescreve; correção entra como rodada nova, citando a corrigida.";
+const SITUACOES_REL = ["concluído", "cancelado"];
+const SEM_AVANCO_PARADA = 3;   // rodadas seguidas sem avanço que permitem declarar a parada do projeto
+const limpo = t => String(t === undefined || t === null ? "" : t).normalize("NFC").replace(/\s+/g, " ").trim();
+const semV = v => limpo(v).replace(/^[vV]/, "");
+// As cinco células da linha no Quadro de rodadas. É este texto que a impressão digital protege.
+function celulasRodada(r) {
+  const tipo = r.tipo || "rodada", c = r.compromisso || {};
+  const pre = tipo === "replanejamento" ? `Replanejamento: plano passa à v${semV(r.plano_versao)}.`
+    : tipo === "correcao" ? `Correção da rodada ${limpo(r.corrige)}:`
+    : tipo === "encerramento" ? `Encerramento (${limpo(r.situacao)}), com o termo ${limpo(r.termo)}.`
+    : EVENTOS_REL[tipo] ? EVENTOS_REL[tipo] + ":" : "";
+  const comp = [limpo(c.oque), limpo(c.quem), limpo(c.ate) ? "até " + limpo(c.ate) : ""].filter(Boolean).join(" · ") || "—";
+  const avanco = r.avanco === "sim" ? "Sim" : r.avanco === "nao" ? "Não: " + limpo(r.travou) + (limpo(r.depende) ? `; depende de ${limpo(r.depende)}` : "") : "—";
+  return [String(parseInt(r.n, 10)), limpo(r.data), limpo(`${pre} ${limpo(r.feito)}`), comp, limpo(avanco)];
+}
+const digitalRodada = r => sha256Hex(new TextEncoder().encode(celulasRodada(r).join("\n")));
+const digitaisRodadas = rodadas => Promise.all((rodadas || []).map(digitalRodada));
+const encerramentoRel = rodadas => (rodadas || []).find(r => r.tipo === "encerramento") || null;
+// Números das últimas rodadas seguidas sem avanço. Correção não conta nem interrompe; os demais eventos interrompem.
+function semAvanco(rodadas) {
+  const seguidas = [];
+  for (const r of [...(rodadas || [])].reverse()) {
+    const tipo = r.tipo || "rodada";
+    if (tipo === "correcao") continue;
+    if (tipo !== "rodada" || r.avanco !== "nao") break;
+    seguidas.unshift(parseInt(r.n, 10));
+  }
+  return seguidas;
+}
+// Versão da rodada seguinte: muda o Y (1.0 → 1.1 → 1.2…)
+const versaoRodada = v => { const [x, y] = String(v || "1.0").split("-r")[0].split(".").concat(["0"]).slice(0, 2); return `${parseInt(x, 10)}.${parseInt(y, 10) + 1}`; };
+// dd/mm/aaaa → aaaammdd, para comparar; vazio se não for uma data válida
+function dataOrd(d) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(limpo(d));
+  if (!m) return "";
+  const t = new Date(+m[3], +m[2] - 1, +m[1]);
+  return t.getFullYear() === +m[3] && t.getMonth() === +m[2] - 1 && t.getDate() === +m[1] ? m[3] + m[2] + m[1] : "";
+}
+function resumoRodada(r) {
+  const tipo = r.tipo || "rodada";
+  const txt = { abertura: "abertura do relatório e início da execução", rodada: "registro da reunião",
+    replanejamento: `replanejamento (plano v${semV(r.plano_versao)})`, parada: "parada declarada", retomada: "retomada",
+    correcao: `correção da rodada ${limpo(r.corrige)}`, encerramento: `encerramento (${limpo(r.situacao)}), termo ${limpo(r.termo)}` }[tipo] || tipo;
+  return `Rodada ${r.n}: ${txt}.`;
+}
+// Erros da rodada nova, conferida contra as já publicadas.
+function conferirRodada(nova, anteriores) {
+  const erros = [], fim = encerramentoRel(anteriores), tipo = nova.tipo || "rodada";
+  if (fim) erros.push(`O relatório foi encerrado na rodada ${fim.n} (termo ${fim.termo}): não recebe novas rodadas.`);
+  const ult = anteriores[anteriores.length - 1], esperado = ult ? parseInt(ult.n, 10) + 1 : 0;
+  if (!(tipo in EVENTOS_REL)) erros.push(`Tipo de registro desconhecido: ${tipo}.`);
+  if (!/^\d+$/.test(limpo(nova.n)) || parseInt(limpo(nova.n), 10) !== esperado)
+    erros.push(`A rodada nova é a ${esperado}` + (ult ? ` (a última publicada é a ${ult.n}).` : ", a abertura."));
+  else if ((tipo === "abertura") !== (esperado === 0))
+    erros.push(esperado === 0 ? "A rodada 0 é a abertura, com o início da execução." : "Só a rodada 0 é a abertura.");
+  const data = limpo(nova.data);
+  if (!dataOrd(data)) erros.push("Informe a data da rodada (dd/mm/aaaa).");
+  else if (ult && dataOrd(data) < dataOrd(ult.data)) erros.push(`A data da rodada (${data}) é anterior à da rodada ${ult.n} (${ult.data}).`);
+  if (!limpo(nova.feito) && tipo !== "encerramento") erros.push("Descreva o que se fez desde a rodada anterior.");
+  const c = nova.compromisso || {};
+  if (["abertura", "rodada", "replanejamento", "retomada"].includes(tipo) && !["oque", "quem", "ate"].every(k => limpo(c[k])))
+    erros.push("Informe o compromisso seguinte: o quê, quem e até quando.");
+  if (tipo === "rodada") {
+    if (!["sim", "nao"].includes(nova.avanco)) erros.push("Diga se houve avanço: sim, ou não com o que travou e de quem depende.");
+    else if (nova.avanco === "nao" && !(limpo(nova.travou) && limpo(nova.depende))) erros.push("Sem avanço: diga o que travou e de quem depende.");
+  }
+  if (tipo === "correcao" && !anteriores.some(r => limpo(r.n) === limpo(nova.corrige))) erros.push("Correção: informe o número da rodada corrigida.");
+  if (tipo === "replanejamento" && !/^[vV]?\d+\.\d+$/.test(limpo(nova.plano_versao))) erros.push("Replanejamento: informe a nova versão do plano (ex.: 1.1).");
+  if (tipo === "encerramento") {
+    if (!limpo(nova.termo).toUpperCase().includes("-TER-")) erros.push("Encerramento: informe o código do termo de encerramento (TER).");
+    if (!SITUACOES_REL.includes(limpo(nova.situacao))) erros.push("Encerramento: diga se o projeto foi concluído ou cancelado.");
+  }
+  return erros;
+}
+const ehQuadroRodadas = b => b && b.t === "tabela" && (b.cabecalho || []).slice(0, 3).map(c => String(c).replace(/\*/g, "").trim()).join("|") === CAB_RODADAS.slice(0, 3).join("|");
+// O Quadro de rodadas do corpo ainda diz o que a ficha registrou? Linha mudada no Word é recusada.
+function conferirQuadroRodadas(blocos, rodadas) {
+  const q = (blocos || []).find(ehQuadroRodadas);
+  if (!q) return [];
+  const lidas = (q.linhas || []).map(l => l.map(c => limpo(String(c).replace(/\*/g, ""))));
+  for (let i = 0; i < Math.min(rodadas.length, lidas.length); i++)
+    if (lidas[i].slice(0, 5).join("\n") !== celulasRodada(rodadas[i]).join("\n"))
+      return [`A rodada ${rodadas[i].n} foi alterada no Quadro de rodadas do documento. Rodada publicada não se reescreve: ` +
+        "volte o texto ao publicado (ou parta da versão vigente) e registre a correção numa rodada nova."];
+  if (lidas.length !== rodadas.length)
+    return [`O Quadro de rodadas tem ${lidas.length} linha(s), mas a ficha registra ${rodadas.length}: linha publicada não se acrescenta nem se apaga à mão.`];
+  return [];
+}
+const planosDoProjeto = (lista, projeto) => listaNormalizar(lista).documentos.filter(d => d.tipo === "PLN" && d.estado === "OFICIAL" && projeto &&
+  semAcento(d.projeto || projetoDaPasta(d.pasta)) === semAcento(projeto));
+// Regras próprias do relatório de condução. Acerta código, versão e histórico; devolve { erros, avisos }.
+async function regrasRel(spec, lista, anterior) {
+  const erros = [], avisos = [];
+  if (spec.estado !== "OFICIAL") erros.push("Relatório de condução é oficial pelo ato da coordenação: gere como OFICIAL (não tem minuta nem em aprovação).");
+  if (!spec.projeto) erros.push("Relatório de condução é sempre de um projeto: informe o projeto.");
+  if (!lista) erros.push("Relatório de condução precisa da lista mestra: conecte a pasta dos documentos, onde se confere o plano oficial e as rodadas publicadas.");
+  if (erros.length) return { erros, avisos };
+  const docs = listaNormalizar(lista).documentos;
+  let plano = (anterior && anterior.plano) || spec.plano;
+  if (!plano) {
+    const planos = planosDoProjeto(lista, spec.projeto);
+    if (!planos.length) return { erros: [`O projeto "${spec.projeto}" não tem plano (PLN) oficial na lista mestra: o relatório de condução só se abre com o plano já oficial.`], avisos };
+    if (planos.length > 1) return { erros: [`O projeto "${spec.projeto}" tem mais de um plano oficial na lista (${planos.map(d => d.codigo).join(", ")}): informe "plano".`], avisos };
+    plano = planos[0].codigo;
+  }
+  const m = /^([A-Z0-9]{2,6})-PLN-([A-Z0-9]{2,6})-(\d{3})$/.exec(String(plano)), regPlano = docs.find(d => d.codigo === plano);
+  if (!m) return { erros: [`Plano inválido: ${plano}.`], avisos };
+  if (!regPlano || regPlano.estado !== "OFICIAL") erros.push(`O plano ${plano} não está oficial na lista mestra: o relatório de condução só se abre com o plano já oficial.`);
+  const codigo = `${m[1]}-REL-${m[2]}-${m[3]}`;
+  if (spec.codigo && spec.codigo !== codigo) erros.push(`O relatório do plano ${plano} é o ${codigo}, e não ${spec.codigo}: o número é herdado do plano.`);
+  if ((/^\d+$/.test(String(spec.numero || "")) && parseInt(spec.numero, 10) !== parseInt(m[3], 10)) || (spec.area || m[2]) !== m[2])
+    avisos.push(`Número herdado do plano: o relatório é o ${codigo}.`);
+  Object.assign(spec, { plano, empresa: m[1], area: m[2], numero: parseInt(m[3], 10), codigo });
+  delete spec.area_nome;
+  const reg = docs.find(d => d.codigo === codigo);
+  if (reg && reg.plano !== plano)
+    erros.push(`O código ${codigo} já é "${reg.titulo}" na lista mestra (v${reg.versao}), que não é o relatório de condução ` +
+      `do plano ${plano}. A política reserva esse número ao relatório do plano: resolva o conflito antes de abrir o relatório.`);
+  const rodadas = spec.rodadas || [], ants = (anterior && anterior.rodadas) || [];
+  if (!rodadas.length) return { erros: erros.concat("Relatório de condução sem rodadas: a abertura registra a rodada 0, com o início da execução."), avisos };
+  if (!anterior) {
+    if (reg && reg.plano === plano) erros.push(`O relatório ${codigo} já existe (v${reg.versao}): acrescente a rodada a partir da versão vigente.`);
+    if (rodadas.length !== 1) erros.push("A abertura do relatório registra só a rodada 0.");
+    spec.versao = "1.0";
+    spec.historico = [{ versao: "1.0", data: spec.data_aprovacao || rodadas[0].data || "",
+      descricao: "Abertura do relatório: identificação e rodada 0 (início da execução).", responsavel: spec.aprovado_por || "" }];
+  } else {
+    if (rodadas.length !== ants.length + 1) erros.push("Cada versão do relatório acrescenta uma rodada, e só uma.");
+    const hAnt = await digitaisRodadas(ants), hNov = await digitaisRodadas(rodadas.slice(0, ants.length));
+    const k = hAnt.findIndex((h, i) => i < hNov.length && h !== hNov[i]);
+    if (k >= 0) erros.push(`A rodada ${ants[k].n} mudou: rodada publicada não se reescreve. Corrija numa rodada nova, do tipo correção.`);
+    const publicadas = (reg && reg.rodadas_sha256) || [];
+    if (publicadas.length > ants.length)
+      erros.push(`O arquivo é a v${anterior.versao}, com ${ants.length} rodada(s), mas a lista mestra já registra ${publicadas.length} ` +
+        `(v${reg.versao}). Acrescente a rodada a partir da versão vigente.`);
+    else {
+      const j = publicadas.findIndex((h, i) => h !== hAnt[i]);
+      if (j >= 0) erros.push(`A rodada ${ants[j].n} do documento não confere com a registrada na lista mestra (SHA-256 diferente): ` +
+        "rodada publicada não se reescreve. Parta da versão vigente e corrija numa rodada nova, do tipo correção.");
+      if (reg && publicadas.length < ants.length && !erros.length)
+        avisos.push(`A lista mestra registrava ${publicadas.length} de ${ants.length} rodada(s); as demais foram conferidas com o documento.`);
+    }
+    spec.versao = versaoRodada(anterior.versao);
+  }
+  erros.push(...conferirRodada(rodadas[rodadas.length - 1], rodadas.slice(0, -1)));
+  spec.data_aprovacao = spec.data_aprovacao || rodadas[rodadas.length - 1].data;
+  const seguidas = semAvanco(rodadas);
+  if (seguidas.length >= SEM_AVANCO_PARADA)
+    avisos.push(`${seguidas.length} rodadas seguidas sem avanço (${seguidas.join(", ")}): a parada pode ser declarada ` +
+      "do projeto. Declarar é decisão da coordenação, registrada como rodada.");
+  const fim = encerramentoRel(rodadas);
+  if (fim) {
+    if (!docs.find(d => d.codigo === fim.termo)) avisos.push(`O termo de encerramento ${fim.termo} não está na lista mestra: confira o código.`);
+    avisos.push(`Relatório encerrado: não recebe novas rodadas. O termo de encerramento cita o ${codigo} v${spec.versao}.`);
+  }
+  return { erros, avisos };
+}
+// Refaz no corpo o Quadro de rodadas (a partir da ficha) e o quadro de encerramento.
+function corpoRel(blocos, spec) {
+  const rodadas = spec.rodadas || [], fim = encerramentoRel(rodadas);
+  let corpo = JSON.parse(JSON.stringify(blocos || []));
+  const i = corpo.findIndex(ehQuadroRodadas);
+  if (i < 0) throw new Error("Não achei o Quadro de rodadas no corpo: comece do arquivo de partida do modelo (Apêndice F).");
+  corpo[i] = { ...corpo[i], cabecalho: [...CAB_RODADAS], linhas: rodadas.map(celulasRodada), larguras: [0.5, 1.8, 4.0, 3.1, 2.3],
+    titulo: corpo[i].titulo || "Rodadas do projeto", nota: NOTA_RODADAS };
+  // encerrado: a seção de encerramento deixa de ter o lembrete de preenchimento
+  if (fim) corpo = corpo.filter(b => !(b.t === "p" && /^\[?Preenchido na última rodada/.test(String(b.texto || "").trim())));
+  for (const b of corpo) {
+    if (b.t === "campos" && b.itens && b.itens.length && String(b.itens[0][0]).replace(/\*/g, "").trim() === "Termo de encerramento")
+      b.itens = [["Termo de encerramento", fim ? fim.termo : "—"], ["Última rodada", fim ? `${fim.n}, em ${fim.data}` : "—"],
+        ["Situação", fim ? limpo(fim.situacao).charAt(0).toUpperCase() + limpo(fim.situacao).slice(1) : "Em andamento"]];
+    else if (b.t === "p" && /^\[Preenchido na última rodada/.test(String(b.texto || "").trim())) b.texto = "Preenchido na última rodada.";
+  }
+  return corpo;
+}
 
 /* Inventário: lê a identificação de cada .docx da pasta (ficha, cabeçalho ou nome do arquivo) para montar a lista
    do que já foi publicado antes do controle existir. Mesmas regras do --inventariar do gerador. */
@@ -1321,6 +1569,29 @@ const nomeDePasta = t => String(t || "").replace(/[\\/:*?"<>|]+/g, " ").replace(
 const ehPastaObsoletos = caminho => String(caminho || "").split("/").some(p => p.toLowerCase() === "obsoletos");
 const versaoBase = v => String(v || "").split("-r")[0];
 const rotuloEstado = e => (ESTADOS[e] ? ESTADOS[e].rotulo : String(e || "?")).toLowerCase();
+/* Inventário do relatório de condução: as rodadas do arquivo conferem com as registradas na lista e com as das
+   versões anteriores ainda na pasta? Rodada que não confere não passa para a lista: ela mantém as registradas. */
+async function alertasRel(codigo, spec, emUso, lista, reg) {
+  if (!(spec.rodadas && spec.rodadas.length)) return [];      // relatório comum: não é de condução
+  const alertas = [], hs = await digitaisRodadas(spec.rodadas);
+  const antes = listaNormalizar(lista).documentos.find(d => chaveRegistro(d) === chaveRegistro(reg));
+  const pub = (antes && antes.rodadas_sha256) || [];
+  if (pub.length > hs.length) {
+    alertas.push(`${codigo}: a lista mestra registra ${pub.length} rodada(s), mas o arquivo mais recente na pasta (v${spec.versao}) tem ${hs.length}. ` +
+      "A versão vigente sumiu da pasta?");
+    reg.rodadas_sha256 = pub;
+  } else if (pub.some((h, i) => h !== hs[i])) {
+    alertas.push(`${codigo} v${spec.versao}: as rodadas não conferem com as registradas na lista mestra (rodada publicada alterada). ` +
+      "A lista mantém as rodadas registradas.");
+    reg.rodadas_sha256 = pub;
+  }
+  for (const m of emUso) {
+    const r2 = await digitaisRodadas(m.spec.rodadas);
+    if (m.spec !== spec && r2.some((h, i) => h !== hs[i]))
+      alertas.push(`${m.nome}: as rodadas desta versão não conferem com as da v${spec.versao} (rodada publicada alterada).`);
+  }
+  return alertas;
+}
 async function inventariar(dir, lista, aoAndar) {
   const achados = [], semId = [], ignorados = [], modelos = [], visitadas = new Set();
   async function andar(handle, caminho) {
@@ -1366,7 +1637,11 @@ async function inventariar(dir, lista, aoAndar) {
       alertas.push(`${codigo} v${atual.spec.versao}: o arquivo oficial ainda está em ${atual.pasta}, mas essa versão já tem cópia obsoleta em ${jaObsoleta.pasta}. Retire o oficial da pasta.`);
       atual = jaObsoleta;
     }
-    if (oficiais.length > 1)
+    const rel = atual.spec.tipo === "REL" && !!(atual.spec.rodadas && atual.spec.rodadas.length);
+    if (oficiais.length > 1 && rel)
+      alertas.push(`${codigo}: relatório de condução com mais de um arquivo em uso (${oficiais.map(o => `v${o.spec.versao} em ${o.pasta}`).join("; ")}). ` +
+        `A v${oficiais[oficiais.length - 1].spec.versao} contém as rodadas das anteriores: retire as anteriores da pasta (relatório de condução não tem cópia obsoleta).`);
+    else if (oficiais.length > 1)
       alertas.push(`${codigo}: mais de uma versão oficial em uso (${oficiais.map(o => `v${o.spec.versao} em ${o.pasta}`).join("; ")}). A anterior precisa ser tornada obsoleta.`);
     const ultimaOficial = oficiais[oficiais.length - 1];
     for (const m of emUso) if (m.spec.estado !== "OFICIAL" && ultimaOficial && comparaVersao(versaoBase(m.spec.versao), versaoBase(ultimaOficial.spec.versao)) <= 0)
@@ -1385,6 +1660,7 @@ async function inventariar(dir, lista, aoAndar) {
     reg.pasta = atual.pasta; reg.origem = atual.origem;
     if (!reg.projeto && projetoDaPasta(atual.pasta)) reg.projeto = projetoDaPasta(atual.pasta);   // documento antigo, sem o campo na ficha
     if (itens.length > 1) reg.arquivos = itens.length;
+    if (atual.spec.tipo === "REL") { await registroRel(reg, atual.spec); alertas.push(...await alertasRel(codigo, atual.spec, emUso, atualizada, reg)); }
     atualizada = mesclarLista(atualizada, reg);
     vistos.add(chaveRegistro(reg));
   }
@@ -1399,6 +1675,11 @@ async function inventariar(dir, lista, aoAndar) {
     }
     naoConferidas.push(`${d.codigo} (${p})`); return true;
   });
+  for (const d of atualizada.documentos) {   // relatório de condução: o plano dele tem de estar oficial
+    if (d.tipo !== "REL" || !d.plano) continue;
+    const p = atualizada.documentos.find(x => x.codigo === d.plano);
+    if (!p || p.estado !== "OFICIAL") alertas.push(`${d.codigo}: o plano ${d.plano} não está oficial na lista mestra.`);
+  }
   const conta = chave => achados.reduce((m, a) => (m[a[chave] || a.spec[chave]] = (m[a[chave] || a.spec[chave]] || 0) + 1, m), {});
   const versoesRuins = [...new Set(achados.filter(a => !RE_VERSAO_OK.test(String(a.spec.versao || ""))).map(a => `${a.spec.codigo}: v${a.spec.versao}`))];
   const semNumero = achados.filter(a => !a.spec.numero).map(a => `${a.spec.codigo} — ${a.nome}`);
@@ -1883,6 +2164,12 @@ function organizar(itens) {
   function atualizarModo() {
     $("atualizacao").hidden = !anterior;
     if (!anterior) { $("bloco-obsoleto-anterior").hidden = true; return; }
+    if (relAnterior()) {       // relatório de condução: a versão nova é a rodada; sem "o que mudou" e sem cópia obsoleta
+      $("bloco-mudanca").hidden = $("bloco-oque").hidden = $("bloco-obsoleto-anterior").hidden = true;
+      $("destino").textContent = encerramentoRel(anterior.rodadas) ? "Relatório encerrado: não recebe novas rodadas."
+        : `Nova versão: v${versaoRodada(anterior.versao)} · Oficial, com a rodada nova`;
+      return;
+    }
     const e = $("estado").value, obsoletar = e === "OBSOLETO";
     $("bloco-mudanca").hidden = obsoletar || anterior.estado !== "OFICIAL";
     $("bloco-oque").hidden = obsoletar;
@@ -1927,6 +2214,89 @@ function organizar(itens) {
     } catch (e) { /* sem busca: segue pedindo o arquivo */ }
     buscando = false;
   }
+  /* ------------------------------------------------ relatório de condução (REL)
+     Abertura (rodada 0) a partir do arquivo de partida, ou "Acrescentar rodada" a partir da versão vigente: as rodadas
+     publicadas aparecem travadas e o formulário pede só a nova. Sempre oficial, pela coordenação, com o número do plano. */
+  const relAnterior = () => anterior && anterior.tipo === "REL" && (anterior.rodadas || []).length ? anterior : null;
+  // O relatório de condução é um REL com rodadas: o lido já as tem, ou o novo marca a caixa. REL sem rodadas é relatório comum.
+  const podeAbrirRel = () => $("tipo").value === "REL" && !relAnterior() && !(anterior && anterior.tipo === "REL");
+  const modoRel = () => $("tipo").value === "REL" && (!!relAnterior() || (podeAbrirRel() && $("rel-conducao").checked));
+  const dataBR = v => { if (!v) return ""; const [a, m, d] = v.split("-"); return `${d}/${m}/${a}`; };
+  function planoRel() {
+    const ant = relAnterior();
+    if (ant) return { codigo: ant.plano, reg: lista ? listaNormalizar(lista).documentos.find(d => d.codigo === ant.plano) : null };
+    if (!lista) return { erro: "conecte a pasta dos documentos: o relatório confere na lista mestra o plano oficial do projeto." };
+    const proj = projetoCanonico($("projeto").value);
+    if (!proj) return { erro: "informe o projeto: o relatório leva o número do plano dele." };
+    const ps = planosDoProjeto(lista, proj);
+    if (!ps.length) return { erro: `o projeto "${proj}" não tem plano (PLN) oficial na lista mestra.` };
+    if (ps.length > 1) return { erro: `o projeto "${proj}" tem mais de um plano oficial (${ps.map(d => d.codigo).join(", ")}).` };
+    return { codigo: ps[0].codigo, reg: ps[0] };
+  }
+  function rodadaDoForm() {
+    const tipo = $("rel-tipo").value, r = { n: $("rel-n").value === "" ? "" : parseInt($("rel-n").value, 10), tipo, data: dataBR($("rel-data").value), feito: $("rel-feito").value.trim() };
+    if (["abertura", "rodada", "replanejamento", "retomada"].includes(tipo)) r.compromisso = { oque: $("rel-oque").value.trim(), quem: $("rel-quem").value.trim(), ate: dataBR($("rel-ate").value) };
+    if (tipo === "rodada") { r.avanco = $("rel-avanco").value; if (r.avanco === "nao") { r.travou = $("rel-travou").value.trim(); r.depende = $("rel-depende").value.trim(); } }
+    if (tipo === "correcao") r.corrige = $("rel-corrige").value === "" ? "" : parseInt($("rel-corrige").value, 10);
+    if (tipo === "replanejamento") r.plano_versao = semV($("rel-plano-versao").value);
+    if (tipo === "encerramento") { r.termo = $("rel-termo").value.trim().toUpperCase(); r.situacao = $("rel-situacao").value; }
+    return r;
+  }
+  function limparFormRel() {
+    ["rel-n", "rel-data", "rel-feito", "rel-oque", "rel-quem", "rel-ate", "rel-travou", "rel-depende", "rel-corrige", "rel-plano-versao", "rel-termo"].forEach(id => { $(id).value = ""; });
+    $("rel-avanco").value = ""; $("rel-n").dataset.prox = "";
+  }
+  function mostrarRel() {
+    $("bloco-rel-conducao").hidden = !podeAbrirRel();
+    const rel = modoRel(), ant = relAnterior();
+    $("bloco-rel").hidden = !rel;
+    $("estado").disabled = rel; $("numero").readOnly = rel;
+    $("bloco-data-aprovacao").hidden = rel;      // o relatório é aprovado na data da rodada
+    if (!rel) return;
+    $("estado").value = "OFICIAL";
+    document.body.classList.add("oficial", "publicando"); document.body.classList.remove("obsoleto");
+    $("estado-dica").textContent = "Relatório de condução: sempre oficial, publicado pela coordenação (em Aprovado por), sem passar por em aprovação.";
+    const ants = ant ? ant.rodadas : [], fim = encerramentoRel(ants);
+    const tb = $("rel-rodadas").querySelector("tbody"); tb.innerHTML = "";
+    for (const r of ants) {
+      const tr = document.createElement("tr");
+      for (const c of celulasRodada(r)) { const td = document.createElement("td"); td.textContent = c; tr.appendChild(td); }
+      tb.appendChild(tr);
+    }
+    $("rel-rodadas").hidden = !ants.length;
+    $("rel-titulo").textContent = !ant ? "Relatório de condução · abertura" : fim ? `Relatório de condução encerrado · ${refVersao(ant)}` : `Acrescentar rodada · ${refVersao(ant)}`;
+    const p = planoRel();
+    $("rel-plano").textContent = p.erro ? `— ${p.erro}` : `· plano ${p.codigo}${p.reg ? ` v${p.reg.versao}` : ""} → ${p.codigo.replace("-PLN-", "-REL-")}`;
+    if (p.reg && p.reg.projeto && !ant && $("projeto").value !== p.reg.projeto) $("projeto").value = p.reg.projeto;   // nome do projeto como no plano
+    if (p.codigo && !ant) {      // número, empresa e área do plano
+      const m = /^([A-Z0-9]{2,6})-PLN-([A-Z0-9]{2,6})-(\d{3})$/.exec(p.codigo);
+      if (m) { garantirOpcao("empresa", m[1], EMPRESAS[m[1]] && `${EMPRESAS[m[1]].marca} (${m[1]})`); $("empresa").value = m[1]; mostrarLogo(m[1]);
+        garantirOpcao("area", m[2], `${AREAS[m[2]] || m[2]} (${m[2]})`); $("area").value = m[2]; $("numero").value = parseInt(m[3], 10); }
+    }
+    if (!$("titulo").value.trim() && $("projeto").value.trim()) $("titulo").value = projetoCanonico($("projeto").value);
+    $("rel-form").hidden = !!fim;
+    for (const o of $("rel-tipo").options) o.disabled = ant ? o.value === "abertura" : o.value !== "abertura";
+    if (!ant) $("rel-tipo").value = "abertura"; else if ($("rel-tipo").value === "abertura") $("rel-tipo").value = "rodada";
+    const prox = ants.length ? parseInt(ants[ants.length - 1].n, 10) + 1 : 0;
+    if ($("rel-n").dataset.prox !== String(prox)) { $("rel-n").value = prox; $("rel-n").dataset.prox = String(prox); }
+    if (!$("rel-data").value) $("rel-data").value = $("data_emissao").value;
+    const tipo = $("rel-tipo").value;
+    if (tipo === "abertura" && !$("rel-feito").value.trim() && p.codigo)
+      $("rel-feito").value = `Início da execução, com o plano ${p.codigo} v${p.reg ? p.reg.versao : "1.0"} oficial.`;
+    for (const el of document.querySelectorAll("#bloco-rel .rel-so")) el.hidden = !el.dataset.tipos.split(" ").includes(tipo);
+    $("rel-sem-avanco").hidden = $("rel-avanco").value !== "nao";
+    $("rel-feito-rotulo").textContent = { encerramento: "Resultado (opcional)", parada: "Parada: fase alcançada, o que falta, de quem depende e quando retomar",
+      correcao: "O que estava errado e como fica", replanejamento: "Motivo do replanejamento", retomada: "O que permitiu retomar", abertura: "Início da execução" }[tipo] || "O que se fez desde a rodada anterior";
+    $("bloco-rel-retirar").hidden = !(ant && pasta && !fim);
+    $("rel-versao-anterior").textContent = ant ? `v${ant.versao}` : "";
+    const seguidas = semAvanco(ants.concat([rodadaDoForm()]));
+    $("rel-aviso").textContent = fim ? `Encerrado na rodada ${fim.n} (termo ${fim.termo}): o relatório continua oficial, como registro, e não recebe novas rodadas.`
+      : seguidas.length >= SEM_AVANCO_PARADA ? `${seguidas.length} rodadas seguidas sem avanço (${seguidas.join(", ")}): a parada do projeto pode ser declarada. Declarar é decisão da coordenação, registrada como rodada.` : "";
+  }
+  ["rel-tipo", "rel-avanco", "rel-n", "rel-data", "rel-feito"].forEach(id => $(id).addEventListener("change", () => mostrarRel()));
+  $("rel-conducao").addEventListener("change", () => { atualizarDicas(); mostrarLista(); });
+  $("projeto").addEventListener("change", () => mostrarRel());
+
   const atualizarDicas = () => {
     const t = $("tipo").value;
     $("tipo-dica").textContent = (TIPOS_LONGOS[t]
@@ -1943,7 +2313,8 @@ function organizar(itens) {
     document.body.classList.toggle("publicando", publicando);
     // Sair da publicação devolve o número sugerido à lista: minuta não carrega número que ninguém reservou.
     if (!publicando && numeroAuto && semNumero()) $("numero").value = "";
-    if ((e === "OFICIAL" || e === "OBSOLETO") && !anterior) $("mais").open = true;
+    if ((e === "OFICIAL" || e === "OBSOLETO") && !anterior && !modoRel()) $("mais").open = true;
+    mostrarRel();
     atualizarModo();
   };
   $("tipo").addEventListener("change", atualizarDicas);
@@ -1988,8 +2359,9 @@ function organizar(itens) {
     if (numeroAuto && semNumero() && vaiPublicar()) $("numero").value = proximoNumero(lista, s);
     if (pasta && !lista.documentos.length) { $("lista-dica").textContent = "Lista vazia: se a pasta já tem documentos, clique em Inventariar para registrar o que existe antes de gerar o próximo."; return; }
     $("lista-dica").textContent = (pasta ? `Pasta conectada: o .docx é gravado nela e a lista (${caminhoLista}) é atualizada. ` : "Arquivo carregado: a lista atualizada vem junto no download. ") +
-      `Próximo número livre de ${s.empresa}-${s.tipo}-${s.area}: ${prox}.`;
+      (modoRel() ? "O relatório de condução não reserva número: leva o do plano do projeto." : `Próximo número livre de ${s.empresa}-${s.tipo}-${s.area}: ${prox}.`);
     if (numeroAuto && semNumero() && vaiPublicar()) $("numero").value = proximoNumero(lista, s);
+    mostrarRel();
   }
   async function listaDaPasta(dir) {
     try {
@@ -2259,6 +2631,7 @@ function organizar(itens) {
     if (f.area) { garantirOpcao("area", f.area, `${AREAS[f.area] || f.area} (${f.area})`); $("area").value = f.area; }
     $("titulo").value = ""; $("versao").value = "1.0"; $("numero").value = ""; numeroAuto = true;
     $("estado").value = "MINUTA";
+    limparFormRel();
     c.blocos = c.blocos.filter(b => !(b.t === "nota" && b.rotulo === "Como usar"));
     delete c.ficha;
     (c.avisos = c.avisos || []).unshift("Arquivo de partida do modelo oficial: tratado como documento novo. Dê o título e substitua os colchetes; o código sai com XXX.");
@@ -2286,6 +2659,10 @@ function organizar(itens) {
     $("mudanca").value = "conteudo"; $("o_que_mudou").value = "";
     const sug = sugerirAtualizacao(f, "conteudo");
     $("estado").value = sug.estado; $("versao").value = sug.versao;
+    limparFormRel();
+    if (f.tipo === "REL" && (f.rodadas || []).length) {    // relatório de condução: a coordenação publica a rodada seguinte
+      $("estado").value = "OFICIAL"; $("versao").value = versaoRodada(f.versao); $("aprovado_por").value = f.aprovado_por || "";
+    }
     numeroAuto = !f.numero;      // minuta sem número: ao publicar, o Timbrador sugere o próximo livre
     $("detectado").innerHTML = `<strong>Documento timbrado reconhecido:</strong> ${escH(refVersao(f))} · ${escH(nomeEstado(f.estado))}<br>` +
       `<span>Empresa, tipo, número, título e responsáveis foram preenchidos. O arquivo será tratado como atualização.</span>`;
@@ -2515,6 +2892,25 @@ function organizar(itens) {
     return { h, caminho: juntar(base.caminho, nomeP), criada };
   }
 
+  /* Relatório de condução: a versão nova contém a anterior inteira, então a anterior sai da pasta (sem cópia obsoleta).
+     Só sai o arquivo da mesma pasta cujas rodadas conferem com as da versão substituída. */
+  async function retirarRelAnterior(onde, spec) {
+    const ant = relAnterior(), fica = `Relatório de condução não tem cópia obsoleta: retire da pasta a v${ant.versao}, que a v${spec.versao} contém inteira.`;
+    if (!onde || !onde.h || !$("rel-retirar").checked) return fica;
+    const prefixo = `${ant.codigo || spec.codigo}`.replace("/", "-") + `_v${ant.versao}_OFICIAL_`;
+    try {
+      const esperadas = (await digitaisRodadas(ant.rodadas)).join();
+      for await (const [nome, h] of onde.h.entries()) {
+        if (h.kind !== "file" || !nome.startsWith(prefixo) || !nome.toLowerCase().endsWith(".docx")) continue;
+        const r = await fichaRapida(await (await h.getFile()).arrayBuffer());
+        if ((await digitaisRodadas(r.spec.rodadas)).join() !== esperadas) return `${nome} não confere com a versão substituída: não foi retirado. ${fica}`;
+        await onde.h.removeEntry(nome);
+        return `Retirei ${juntar(onde.caminho, nome)}: a v${spec.versao} contém todas as rodadas dela (relatório de condução não tem cópia obsoleta).`;
+      }
+    } catch (e) { return `Não consegui retirar a v${ant.versao} (${e.message}). ${fica}`; }
+    return fica;
+  }
+
   // texto colado: pela caixa "Ou cole o texto aqui" ou com Ctrl+V em qualquer parte da página fora dos campos
   function carregarTexto(texto) {
     if (!texto || !texto.trim()) return msg("Não há texto para usar.", "erro");
@@ -2551,8 +2947,8 @@ function organizar(itens) {
     // relê a lista antes de conferir: outra pessoa pode ter reservado um número enquanto esta página estava aberta
     if (pastaLista) { try { lista = await listaDaPasta(pastaLista); mostrarLista(); } catch (e) { return msg("Não consegui ler a lista mestra na pasta: " + escH(e.message), "erro"); } }
     dataDeHoje();
-    const estado = $("estado").value, obsoletar = !!anterior && estado === "OBSOLETO";
-    let spec;
+    const estado = $("estado").value, obsoletar = !!anterior && estado === "OBSOLETO", rel = !obsoletar && modoRel();
+    let spec, avisosRel = [];
     const antes = [];
     if (obsoletar) {
       spec = JSON.parse(JSON.stringify(anterior));
@@ -2582,7 +2978,21 @@ function organizar(itens) {
       else delete spec.assinaturas_previstas;      // assinadas agora: deixam de ser só previstas
       if (!spec.com_anexos) { delete spec.com_anexos; delete spec.anexos_externos; }
       if (!spec.projeto) delete spec.projeto;
-      if (anterior) {
+      if (modoRel()) {        // relatório de condução: a rodada nova é a versão nova
+        const ra = relAnterior(), nova = rodadaDoForm();
+        spec.rodadas = (ra ? ra.rodadas : []).concat([nova]);
+        spec.estado = "OFICIAL";
+        if (nova.data) spec.data_emissao = spec.data_aprovacao = nova.data;
+        if (!spec.titulo) spec.titulo = spec.projeto || "";
+        if (ra) {
+          spec.plano = ra.plano; delete spec.substitui;
+          spec.historico = historicoAtualizado(ra, versaoRodada(ra.versao), resumoRodada(nova), spec.aprovado_por, nova.data);
+          conferirQuadroRodadas(conteudo.blocos, ra.rodadas).forEach(m => antes.push({ campo: "bloco-rel", msg: m }));
+        }
+        const r = await regrasRel(spec, lista, ra);
+        r.erros.forEach(m => antes.push({ campo: "bloco-rel", msg: m }));
+        avisosRel = r.avisos;
+      } else if (anterior) {
         const oq = $("o_que_mudou").value.trim();
         if (!oq) antes.push({ campo: "o_que_mudou", msg: "Descreva o que mudou nesta versão: vai para o histórico de revisões." });
         let v = spec.versao.trim();
@@ -2590,7 +3000,8 @@ function organizar(itens) {
         spec.historico = historicoAtualizado(anterior, v, oq, spec.elaborado_por, spec.data_emissao);
       }
     }
-    const querObsoleta = !obsoletar && estado === "OFICIAL" && !!substituida() && $("obsoletar_anterior").checked;
+    // relatório de condução não tem cópia obsoleta: a versão nova contém a anterior inteira
+    const querObsoleta = !obsoletar && !rel && estado === "OFICIAL" && !!substituida() && $("obsoletar_anterior").checked;
     if (querObsoleta && !original) antes.push({ campo: "soltar-original", msg: "Envie o arquivo oficial da versão substituída para marcá-la como obsoleta, ou desmarque essa opção." });
     let tituloAjustado = null;
     if (!obsoletar) {
@@ -2603,7 +3014,7 @@ function organizar(itens) {
     if (lista && vaiPublicar() && !spec.elaborado_por && !obsoletar) antes.push({ campo: "elaborado_por", msg: "Informe quem responde por esta publicação (em Mais opções): vai para a lista mestra." });
     const { erros, avisos } = validar(spec);
     const atualizacao = !!anterior && (obsoletar || anterior.codigo === spec.codigo);
-    const conf = conferirLista(lista, spec, atualizacao);
+    const conf = rel ? { erros: [], avisos: [] } : conferirLista(lista, spec, atualizacao);   // o relatório confere a lista em regrasRel
     const todos = antes.concat(erros, conf.erros);
     if (todos.length) return mostrarErros(todos);
     // anexos: nome de cada um na pasta do documento e o que falta gravar
@@ -2617,12 +3028,14 @@ function organizar(itens) {
     // local e data de assinatura: a data é a deste documento, não a da versão anterior nem a do texto de origem
     const comData = bl => bl.map(b => b.t === "local_data" ? { ...b, data: spec.data_emissao } : b);
     // assinaturas: no automático, linhas; se elas ficariam sozinhas numa página, tabela
-    let corpoFinal = montarAssinaturas(comData(montarAnexos(conteudo.blocos, spec)), spec, spec.assinatura_formato === "tabela" ? "tabela" : "linhas");
+    let corpoBase = conteudo.blocos;
+    if (rel) { try { corpoBase = corpoRel(conteudo.blocos, spec); } catch (e) { return msg(escH(e.message), "erro"); } }
+    let corpoFinal = montarAssinaturas(comData(montarAnexos(corpoBase, spec)), spec, spec.assinatura_formato === "tabela" ? "tabela" : "linhas");
     const autoTabela = spec.com_assinatura && spec.assinatura_formato !== "linhas" && spec.assinatura_formato !== "tabela" && assinaturasSozinhas(spec, corpoFinal);
     if (autoTabela) corpoFinal = montarAssinaturas(corpoFinal, spec, "tabela");
     const blob = gerarDocx(spec, corpoFinal);
     const nome = nomeArquivo(spec);
-    const extras = [...avisos, ...conf.avisos, ...(conteudo.avisos || []).filter(x => !(spec.com_assinatura && x.startsWith("Assinaturas previstas")))];
+    const extras = [...avisos, ...avisosRel, ...conf.avisos, ...(conteudo.avisos || []).filter(x => !(spec.com_assinatura && x.startsWith("Assinaturas previstas")))];
     if (tituloAjustado) extras.unshift(`Título sem o nome do tipo, que já sai impresso acima dele: "${tituloAjustado[0]}" passou a "${tituloAjustado[1]}".`);
     if (autoTabela) extras.push("As linhas de assinatura ficariam sozinhas na última página: as assinaturas saíram em tabela. Para outro formato, escolha em Formato das assinaturas.");
     const feitos = [[spec, nome, blob]];
@@ -2648,6 +3061,7 @@ function organizar(itens) {
     if (pasta) {
       try {
         const destinos = [];
+        let ondePrincipal = null;
         for (const [s, n, b] of feitos) {
           const copia = s !== spec;                      // cópia obsoleta da versão substituída
           let onde = await destinoDe(s, s.estado === "OBSOLETO");
@@ -2655,6 +3069,7 @@ function organizar(itens) {
           if (!copia && planoAnexos) onde = await abrirPastaDoc(onde, planoAnexos.nomeP);   // documento e anexos juntos
           await gravarEm(onde.h, n, b);
           destinos.push(juntar(onde.caminho, n));
+          if (!copia) ondePrincipal = onde;
           if (onde.criada) { extras.push(`Criei a pasta ${onde.caminho}.`); onde.criada = false; }
           if (!copia && planoAnexos) {
             const gravar = planoAnexos.itens.filter(it => it.fonte);
@@ -2665,10 +3080,11 @@ function organizar(itens) {
           // a cópia obsoleta da versão substituída não entra na lista: a entrada do código aponta a vigente
           // obsoleto substituído por nova versão do mesmo código: a entrada continua apontando a vigente
           const mesmoCodigo = s.estado === "OBSOLETO" && String(s.substituido_por || "").split(" v")[0].trim() === s.codigo;
-          if (vaiPublicar() && !copia && !mesmoCodigo) { const reg = registroDe(s, n); reg.pasta = relativo(onde.caminho) || "."; lista = mesclarLista(lista, reg); }
+          if (vaiPublicar() && !copia && !mesmoCodigo) { const reg = await registroRel(registroDe(s, n), s); reg.pasta = relativo(onde.caminho) || "."; lista = mesclarLista(lista, reg); }
         }
         if (vaiPublicar()) await gravarEm(pastaLista, LISTA_ARQUIVO, listaTexto(lista));
         saida = `Gravado em: ${destinos.map(escH).join(" e ")}`;
+        if (rel && relAnterior()) extras.push(await retirarRelAnterior(ondePrincipal, spec));
         // só retira o oficial anterior depois que a cópia obsoleta foi gravada
         if (feitos.length > 1 && original && original.onde && $("retirar_original").checked) {
           try { await original.onde.dir.removeEntry(original.onde.nome); extras.push(`Retirei ${original.onde.caminho} da pasta: a versão anterior agora está só em Obsoletos, marcada como obsoleta.`); }
@@ -2693,12 +3109,13 @@ function organizar(itens) {
       }
       const links = baixados.map(([s, n, b], i) => baixar(b, n, i * 800));
       if (lista && vaiPublicar()) {
-        for (const [s, n] of feitos) lista = mesclarLista(lista, registroDe(s, n));
+        for (const [s, n] of feitos) lista = mesclarLista(lista, await registroRel(registroDe(s, n), s));
         links.push(baixar(new Blob([listaTexto(lista)], { type: "application/json" }), LISTA_ARQUIVO, feitos.length * 800));
         extras.push(`Substitua o ${LISTA_ARQUIVO} da pasta pelo que acabou de baixar, senão o próximo número sai errado.`);
         mostrarLista();
       }
       saida = "Pronto: " + links.join(" e ");
+      if (rel && relAnterior()) extras.push(`Relatório de condução não tem cópia obsoleta: retire de uso a v${anterior.versao}, que a v${spec.versao} contém inteira.`);
     }
     numeroAuto = true;
     if (!lista && (estado === "OFICIAL" || estado === "OBSOLETO"))
@@ -2714,8 +3131,10 @@ function organizar(itens) {
   // As datas só voltam se tinham sido mudadas à mão; senão, valem as de hoje.
   const RASCUNHO = "timbrador.rascunho";
   const CAMPOS_RASCUNHO = ["empresa", "tipo", "area", "estado", "numero", "versao", "titulo", "classificacao", "elaborado_por",
-    "mudanca", "o_que_mudou", "aprovado_por", "substituido_por", "projeto", "assinatura_formato", "texto-colado"];
-  const MARCAS_RASCUNHO = ["com_assinatura", "com_anexos", "obsoletar_anterior", "retirar_original"];
+    "mudanca", "o_que_mudou", "aprovado_por", "substituido_por", "projeto", "assinatura_formato", "texto-colado",
+    "rel-tipo", "rel-n", "rel-data", "rel-feito", "rel-oque", "rel-quem", "rel-ate", "rel-avanco", "rel-travou", "rel-depende",
+    "rel-corrige", "rel-plano-versao", "rel-termo", "rel-situacao"];
+  const MARCAS_RASCUNHO = ["com_assinatura", "com_anexos", "obsoletar_anterior", "retirar_original", "rel-retirar", "rel-conducao"];
   const OPCOES_RASCUNHO = ["empresa", "tipo", "area", "classificacao"];
   let restaurando = false, timerRascunho = 0;
   const quandoTxt = t => { const d = new Date(t), z = n => String(n).padStart(2, "0"); return `${z(d.getDate())}/${z(d.getMonth() + 1)} às ${z(d.getHours())}:${z(d.getMinutes())}`; };

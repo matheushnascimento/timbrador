@@ -80,6 +80,15 @@ Nesta máquina estão instalados LibreOffice 24.2.7, poppler-utils 24.02, Node 2
 6. **Assinatura entra só pela página** (caixa "Com assinatura"); o gerador guarda os envolvidos como
    `assinaturas_previstas` na ficha.
 
+## Relatório de condução (REL com rodadas)
+
+Exceção às regras de versão: número herdado do plano oficial do projeto, cada rodada é uma versão OFICIAL
+nova, sem cópia obsoleta, e a lista mestra guarda o SHA-256 de cada rodada (`rodadas_sha256`). As mesmas
+regras estão no gerador (`regras_rel`, `celulas_rodada`) e na página (`regrasRel`, `celulasRodada`): a
+impressão digital é calculada sobre o texto das cinco células da linha, e os dois caminhos precisam dar o
+mesmo valor (a fumaça confere, inclusive página lendo arquivo do gerador e vice-versa). Na página, o modo de
+condução é opcional para REL novo (caixa "Relatório de condução de projeto"): REL sem rodadas é relatório comum.
+
 ## Diferenças conhecidas entre página e gerador (herdadas do original)
 
 Não aparecem nas especificações do teste, mas existem:

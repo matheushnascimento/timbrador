@@ -89,6 +89,9 @@ Depois, gere a versão de arquivo único com `--embutir-logos marca.json --saida
 - `--lista PASTA`: confere o número no `lista-mestra.json` (recusa número já usado por outro título; sem número, reserva o próximo livre) e registra a publicação.
 - `--inventariar PASTA [--conferir] [--ignorar NOME]`: varre a pasta dos documentos (subpastas por tipo, `Obsoletos`, `Projetos/NOME`, `Modelos` ignorada) e monta a lista mestra do que já existe.
 - `--anexo ARQUIVO` (repetível): anexos externos; documento e anexos vão para uma pasta com o código, e o documento lista os anexos com tamanho e SHA-256.
+- `--atualizar REL.docx --rodada rodada.json`: acrescenta uma rodada ao relatório de condução (ver abaixo).
+
+**Projeto**: documento de projeto, de qualquer tipo, leva `"projeto": "Nome"` (vai para a ficha, a lista mestra e a pasta `Projetos/Nome`). Plano (PLN) sem projeto é recusado.
 
 **Classificação**: Público, Interno (padrão), Confidencial.
 
@@ -99,6 +102,28 @@ Quadro A – Tipos padrão (a variante define o formato; `tipos_extra` do marca.
 | CI comunicação interna · COM comunicado · OFI ofício · DEC declaração · TER termo · ATA ata · RO registro de ocorrência · AUT autorização · NOT notificação · CTR contrato · PRO proposta · FOR formulário · REC recibo | MAN manual · POL política · REG regulamento · POP procedimento operacional padrão · INS instrução de trabalho · PLN plano · PRJ projeto · REL relatório |
 
 Quadro B – Áreas padrão (substituíveis por `areas` no marca.json): ADM administrativo · DIR diretoria · FIN financeiro · FIS financeiro e fiscal · JUR jurídico · RH recursos humanos · VEN vendas e comercial · ECO e-commerce e marketplaces · EST estoque · EXP expedição · CMP compras · OFC oficina e assistência técnica · MKT marketing · TI tecnologia. Use as áreas que o `--checar-marca` lista; se nada servir, use a mais próxima e avise (ou proponha incluir em `areas_extra`).
+
+### Relatório de condução de projeto (REL com rodadas)
+
+Um REL com `rodadas` registra a condução de um projeto, reunião a reunião. REL sem `rodadas` continua sendo um relatório comum.
+
+- **Um por projeto, com o número do plano**: o do `ACME-PLN-ECO-001` é o `ACME-REL-ECO-001`. O número é herdado, não reservado, e o relatório só se abre com o plano **oficial** na lista mestra: sempre gere com `--lista`.
+- **Sempre OFICIAL, pela coordenação do projeto** (`aprovado_por`), sem minuta nem em aprovação. A abertura é a v1.0, com a rodada 0 (`"tipo": "abertura"`, início da execução); cada rodada publicada é a versão seguinte (1.1, 1.2…).
+- **Só se acrescentam linhas.** As rodadas ficam na ficha e o Quadro de rodadas do corpo (cabeçalho `Nº · Data · O que se fez · Compromisso seguinte · Avanço`) é refeito a partir delas. A lista mestra guarda o SHA-256 de cada rodada, e o gerador recusa a versão nova se uma rodada publicada mudou (no Word ou na ficha) ou se o arquivo não é a versão vigente. Erro se corrige numa rodada nova, do tipo `correcao`.
+- **Sem cópia obsoleta**: a versão nova contém a anterior inteira (`--obsoletar` recusa REL). Oriente a retirar a versão anterior da pasta.
+- **Três rodadas seguidas sem avanço**: o gerador avisa que a parada do projeto pode ser declarada; declarar é decisão da coordenação, registrada como rodada `parada`.
+- **Encerramento**: a última rodada cita o termo de encerramento (TER); depois dela, o relatório não recebe rodadas.
+
+Rodada (`--rodada`; sem `n` e `data`, o gerador põe o próximo número e a data de hoje):
+
+| Campo | Quando |
+|---|---|
+| `n`, `data` (dd/mm/aaaa), `tipo`, `feito` | sempre; `tipo`: `abertura` (só a 0), `rodada`, `replanejamento`, `parada`, `retomada`, `correcao`, `encerramento` |
+| `compromisso`: `{"oque", "quem", "ate"}` | obrigatório em `abertura`, `rodada`, `replanejamento` e `retomada` |
+| `avanco`: `"sim"`, ou `"nao"` com `travou` e `depende` | obrigatório em `rodada` |
+| `plano_versao` · `corrige` · `termo` e `situacao` (`concluído`/`cancelado`) | `replanejamento` · `correcao` · `encerramento` |
+
+Exemplo de abertura: `testes/espec-rel.json`. Na página, o relatório novo se abre marcando "Relatório de condução de projeto"; um REL com rodadas abre no modo **Acrescentar rodada**, com as rodadas publicadas travadas.
 
 ## 5. Assinaturas
 

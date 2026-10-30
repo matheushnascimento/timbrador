@@ -94,6 +94,58 @@ if python3 -c "import json,sys; d=json.load(open(sys.argv[1])); sys.exit(0 if d[
   ok "nova versão é 2.0-r1 em minuta"; else erro "nova versão deveria ser 2.0-r1 em minuta"; fi
 espera_ok     "gera a nova versão"                  python3 "$ger" "$tmp/nova.json" --marca "$marca" --saida "$tmp/docs"
 
+echo "== relatório de condução =="
+# REL com rodadas: número herdado do plano oficial do projeto, uma rodada por versão, SHA-256 das rodadas na lista
+mkdir -p "$tmp/rel"
+python3 - "$raiz/testes" "$tmp" <<'PY'
+import json, sys, os
+base, tmp = sys.argv[1], sys.argv[2]
+plano = {"empresa": "ACME", "tipo": "PLN", "area": "ECO", "numero": 1, "titulo": "Loja nova no marketplace", "projeto": "Loja Nova",
+         "estado": "OFICIAL", "aprovado_por": "Fulano de Tal", "data_aprovacao": "01/10/2026", "data_emissao": "01/10/2026",
+         "elaborado_por": "Fulano de Tal", "corpo": [{"t": "h1", "texto": "Objetivo"}, {"t": "p", "texto": "Abrir a loja."}]}
+json.dump(plano, open(os.path.join(tmp, "rel-plano.json"), "w", encoding="utf-8"), ensure_ascii=False)
+rel = json.load(open(os.path.join(base, "espec-rel.json"), encoding="utf-8"))
+json.dump(dict(rel, projeto="Sem Plano"), open(os.path.join(tmp, "rel-sem-plano.json"), "w", encoding="utf-8"), ensure_ascii=False)
+rodadas = {"r1": {"data": "12/10/2026", "feito": "50 anúncios cadastrados.", "avanco": "sim",
+                  "compromisso": {"oque": "Ativar frete", "quem": "Logística", "ate": "19/10/2026"}},
+           "rx": {"n": 7, "data": "13/10/2026", "feito": "x", "avanco": "sim", "compromisso": {"oque": "a", "quem": "b", "ate": "c"}},
+           "fim": {"tipo": "encerramento", "data": "20/10/2026", "feito": "Loja aberta.", "termo": "ACME-TER-ECO-002/2026", "situacao": "concluído"},
+           "depois": {"data": "21/10/2026", "feito": "x", "avanco": "sim", "compromisso": {"oque": "a", "quem": "b", "ate": "c"}}}
+for k, v in rodadas.items():
+    json.dump(v, open(os.path.join(tmp, f"rodada-{k}.json"), "w", encoding="utf-8"), ensure_ascii=False)
+PY
+docs="$tmp/rel"; rel_vigente() { ls "$docs"/ACME-REL-ECO-001_v*_OFICIAL_*.docx | sort -V | tail -1; }
+espera_ok     "plano oficial do projeto"            python3 "$ger" "$tmp/rel-plano.json" --marca "$marca" --saida "$docs" --lista "$docs"
+espera_recusa "projeto sem plano oficial"           "não tem plano"  python3 "$ger" "$tmp/rel-sem-plano.json" --marca "$marca" --saida "$tmp" --lista "$docs"
+espera_ok     "abertura (v1.0, número do plano)"    python3 "$ger" "$raiz/testes/espec-rel.json" --marca "$marca" --saida "$docs" --lista "$docs"
+espera_recusa "abertura repetida"                   "já existe"      python3 "$ger" "$raiz/testes/espec-rel.json" --marca "$marca" --saida "$tmp" --lista "$docs"
+espera_ok     "prepara a rodada 1 (--rodada)"       python3 "$ger" --marca "$marca" --atualizar "$(rel_vigente)" --rodada "$tmp/rodada-r1.json" --json-saida "$tmp/rel-v11.json"
+espera_ok     "publica a v1.1"                      python3 "$ger" "$tmp/rel-v11.json" --marca "$marca" --saida "$docs" --lista "$docs"
+espera_recusa "rodada fora de ordem"                "rodada nova é a 2" python3 "$ger" --marca "$marca" --atualizar "$(rel_vigente)" --rodada "$tmp/rodada-rx.json"
+espera_recusa "rodada a partir de versão antiga"    "já registra 2"  python3 "$ger" "$tmp/rel-v11.json" --marca "$marca" --saida "$tmp" --lista "$docs"
+espera_recusa "--obsoletar recusa o relatório"      "não tem cópia obsoleta" python3 "$ger" --marca "$marca" --obsoletar "$(rel_vigente)" --substituido-por x --saida "$tmp"
+python3 - "$(rel_vigente)" "$tmp/rel-adulterado.docx" <<'PY'
+import sys, zipfile
+zi, zo = zipfile.ZipFile(sys.argv[1]), zipfile.ZipFile(sys.argv[2], "w", zipfile.ZIP_DEFLATED)
+for i in zi.infolist():
+    b = zi.read(i.filename)
+    if i.filename.startswith("customXml/item") or i.filename == "word/document.xml":
+        b = b.replace("50 anúncios".encode(), "60 anúncios".encode())
+    zo.writestr(i, b)
+zo.close()
+PY
+python3 "$ger" --marca "$marca" --atualizar "$tmp/rel-adulterado.docx" --rodada "$tmp/rodada-fim.json" --json-saida "$tmp/rel-adulterado.json" > /dev/null 2>&1
+espera_recusa "rodada publicada alterada"           "não confere com a registrada" python3 "$ger" "$tmp/rel-adulterado.json" --marca "$marca" --saida "$tmp" --lista "$docs"
+espera_ok     "encerramento (v1.2)"                 python3 "$ger" --marca "$marca" --atualizar "$(rel_vigente)" --rodada "$tmp/rodada-fim.json" --json-saida "$tmp/rel-v12.json"
+espera_ok     "publica o encerramento"              python3 "$ger" "$tmp/rel-v12.json" --marca "$marca" --saida "$docs" --lista "$docs"
+espera_recusa "encerrado não recebe rodada"         "foi encerrado"  python3 "$ger" --marca "$marca" --atualizar "$(rel_vigente)" --rodada "$tmp/rodada-depois.json"
+if python3 -c "
+import json,sys; d=[x for x in json.load(open(sys.argv[1]))['documentos'] if x['codigo']=='ACME-REL-ECO-001'][0]
+sys.exit(0 if d['versao']=='1.2' and len(d['rodadas_sha256'])==3 and d['plano']=='ACME-PLN-ECO-001' else 1)" "$docs/lista-mestra.json"; then
+  ok "lista: v1.2, plano e 3 SHA-256"; else erro "lista do relatório"; fi
+if ls "$docs" | grep -q OBSOLETO; then erro "relatório gerou cópia obsoleta"; else ok "sem cópia obsoleta"; fi
+cp "$(rel_vigente)" "$saida/"
+
 echo "== XML bem formado =="
 for f in "$saida"/*.docx; do
   if python3 - "$f" <<'PY'
@@ -120,6 +172,15 @@ if command -v node > /dev/null && NODE_PATH="$(npm root -g 2>/dev/null)" node -e
       erro "$nome: página e gerador divergem"; sed 's/^/        /' "$saida/.log"
     fi
   done
+  # relatório de condução: a página lê o REL do gerador, confere as rodadas e publica uma; o gerador relê o resultado
+  v11="$(ls "$docs"/ACME-REL-ECO-001_v1.1_OFICIAL_*.docx)"
+  mkdir -p "$tmp/js-rel"
+  if NODE_PATH="$(npm root -g)" node "$raiz/testes/pagina_rel.js" "$tmp/pagina-marca.html" "$v11" "$(rel_vigente)" "$docs/lista-mestra.json" "$tmp/js-rel" > "$saida/.log" 2>&1 \
+     && python3 "$ger" --marca "$marca" --atualizar "$tmp/js-rel/rel.docx" --rodada "$tmp/rodada-depois.json" --json-saida "$tmp/js-rel/v13.json" >> "$saida/.log" 2>&1; then
+    ok "relatório: página e gerador leem e acrescentam rodadas um do outro"
+  else
+    erro "relatório: página × gerador"; sed 's/^/        /' "$saida/.log"
+  fi
 else
   echo "  (pulado: precisa de Node com Playwright)"
 fi
