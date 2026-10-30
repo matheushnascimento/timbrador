@@ -1,5 +1,5 @@
 {
-  "_instrucoes": "Marca FICTÍCIA, só para os testes de fumaça. Não é marca de cliente. ACME tem cadastro completo (emite OFICIAL); SEMLG está incompleta e sem logo (só emite estado não oficial).",
+  "_instrucoes": "Marca FICTÍCIA, só para os testes. Não é marca de cliente. ACME tem cadastro completo (emite OFICIAL); SEMLG está incompleta e sem logo (só minuta e em aprovação); GT é o grupo (sem documento, rodapé com os logos das empresas); VELHA está aposentada (só para ler documentos antigos).",
   "organizacao": "Grupo de Teste",
   "empresa_padrao": "ACME",
   "politica": {
@@ -25,6 +25,23 @@
       "documento": "[definir]",
       "cidade": "Campinas – SP",
       "cor": "8C3B2E"
+    },
+    {
+      "sigla": "GT",
+      "marca": "Grupo de Teste",
+      "razao_social": "Grupo de Teste",
+      "cidade": "Campinas – SP",
+      "cor": "4D4D4D",
+      "grupo": true
+    },
+    {
+      "sigla": "VELHA",
+      "marca": "Antiga",
+      "razao_social": "[definir]",
+      "documento": "[definir]",
+      "cidade": "Campinas – SP",
+      "cor": "555555",
+      "aposentada": true
     }
   ],
   "areas_extra": {},
