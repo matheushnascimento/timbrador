@@ -1,5 +1,6 @@
-# --- Entrega original (o conteúdo já está extraído e versionado) ---
-Timbrador-white-label-v1.zip
+# --- Entregas originais: nunca entram (a última tem dados de organização real) ---
+Timbrador*.zip
+Inventariar.*
 
 # --- Saídas do gerador ---
 # Documento gerado nunca entra no repositório: é produto, não fonte.
@@ -14,6 +15,10 @@ Timbrador-white-label-v1.zip
 marca.json
 skills/timbrador/assets/marca.json
 *_portatil.json
+lista-mestra.json
+# Página montada com a marca embutida (--montar-pagina): só a do repositório, com o bloco vazio, é versionada.
+*.html
+!skills/timbrador/assets/timbrador.html
 
 # --- Python ---
 __pycache__/
