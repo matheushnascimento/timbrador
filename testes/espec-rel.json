@@ -1,0 +1,27 @@
+{
+  "empresa": "ACME",
+  "tipo": "REL", "area": "ADM",
+  "titulo": "Loja nova no marketplace",
+  "projeto": "Loja Nova",
+  "estado": "OFICIAL",
+  "aprovado_por": "Coordenação de Teste", "data_aprovacao": "05/10/2026", "data_emissao": "05/10/2026",
+  "elaborado_por": "Coordenação de Teste",
+  "rodadas": [
+    {"n": 0, "tipo": "abertura", "data": "05/10/2026", "feito": "Início da execução, com o plano ACME-PLN-ECO-001 v1.0 oficial.",
+     "compromisso": {"oque": "Cadastrar os 50 primeiros anúncios", "quem": "Equipe de e-commerce", "ate": "12/10/2026"}}
+  ],
+  "corpo": [
+    {"t": "h1", "texto": "Identificação"},
+    {"t": "tabela", "tipo": "Quadro", "titulo": "Identificação do relatório de condução", "cabecalho": ["Campo", "O que entra"],
+     "linhas": [["Projeto", "Loja Nova"], ["Plano do projeto", "ACME-PLN-ECO-001"], ["Termo de abertura", "ACME-TER-ECO-001/2026"],
+                ["Dono do processo", "Fulano de Tal"], ["Coordenação", "Coordenação de Teste"], ["Ferramenta de trabalho", "Quadro de tarefas"],
+                ["Início da execução", "05/10/2026"]]},
+    {"t": "h1", "texto": "Rodadas"},
+    {"t": "tabela", "tipo": "Quadro", "titulo": "Rodadas do projeto",
+     "cabecalho": ["Nº", "Data", "O que se fez", "Compromisso seguinte (o quê · quem · até)", "Avanço"],
+     "linhas": [["0", "[data]", "[início da execução]", "[o quê · quem · até]", "—"]]},
+    {"t": "h1", "texto": "Encerramento"},
+    {"t": "p", "texto": "[Preenchido na última rodada.]"},
+    {"t": "campos", "itens": [["Termo de encerramento", "[código]"], ["Última rodada", "[número e data]"], ["Situação", "[concluído ou cancelado]"]]}
+  ]
+}
