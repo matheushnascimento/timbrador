@@ -90,7 +90,7 @@
     background:color-mix(in srgb, var(--cor) 12%, transparent); border:4px dashed var(--cor); font-size:22px; font-weight:bold; color:var(--cor-texto); }
   body.arrastando #cobertura { display:flex; }
   #colar-bloco { margin-top:8px; font-size:14px; }
-  #bloco-envolvidos, #bloco-anexos { border:1px solid var(--linha); border-radius:10px; padding:12px; margin-top:8px; }
+  #bloco-envolvidos, #bloco-anexos, #bloco-telegramas { border:1px solid var(--linha); border-radius:10px; padding:12px; margin-top:8px; }
   #lista-anexos { list-style:none; margin:8px 0 0; padding:0; }
   #lista-anexos li { display:grid; grid-template-columns:auto 1fr auto; gap:2px 10px; align-items:center; padding:6px 0; border-bottom:1px solid var(--linha); font-size:14px; }
   #lista-anexos .anexo-n { font-weight:bold; color:var(--suave); grid-row:span 2; }
@@ -111,6 +111,13 @@
   .rel-rodadas td { color:var(--tabela-tinta); }
   .rel-rodadas td:first-child::before { content:"🔒 "; }
   #rel-aviso:not(:empty) { margin-top:8px; color:var(--alerta-tinta); font-weight:600; }
+  .telegrama { display:grid; grid-template-columns:1fr auto; gap:6px; align-items:center; padding:8px 0; border-bottom:1px solid var(--linha); }
+  .telegrama .tel-rotulo { font-size:12px; font-weight:bold; color:var(--suave); }
+  .telegrama button { width:auto; margin:0; border:none; background:none; color:var(--suave); font-size:18px; font-weight:400; cursor:pointer; padding:0 6px; }
+  .telegrama:first-child { padding-top:0; }
+  .telegrama input, .telegrama textarea { grid-column:1 / -1; }
+  .telegrama textarea { width:100%; min-height:90px; font:inherit; font-size:14px; padding:8px 10px; border:1px solid var(--linha); border-radius:8px; box-sizing:border-box; background:var(--campo); color:inherit; }
+  #add-telegrama { margin-top:8px; }
   .envolvido { display:grid; grid-template-columns:1.5fr 1fr 1fr auto; gap:6px; margin-bottom:6px; }
   .envolvido input { min-width:0; }
   .envolvido button { border:none; background:none; color:var(--suave); font-size:18px; cursor:pointer; padding:0 6px; }
@@ -397,6 +404,13 @@
       <ol id="lista-anexos"></ol>
       <div class="dica" id="anexos-vazio">Nenhum anexo ainda.</div>
       <div class="dica">Na pasta, cada arquivo leva o nome "Anexo 01 – nome original". O documento lista os anexos antes do local e data, com tamanho e impressão digital SHA-256, que prova que o arquivo não foi alterado. Minuta vai para a pasta "CÓDIGO-XXX – título"; na publicação nasce a pasta com o número.</div>
+    </div>
+
+    <label class="check" id="bloco-com-telegramas"><input type="checkbox" id="com_telegramas"><span><strong>Com telegramas</strong>: anexos curtos no fim do documento, cada um em meia folha A5, com o código, a versão e o estado deste documento</span></label>
+    <div id="bloco-telegramas" hidden>
+      <div id="telegramas"></div>
+      <button type="button" class="acao" id="add-telegrama">+ Telegrama</button>
+      <div class="dica">No texto colado ou no Word, a linha "TELEGRAMA – título" abre um telegrama: o que vem depois dela vai para ele. No texto do telegrama valem listas (- item, 1. item), tabelas com | e **negrito**.</div>
     </div>
 
     <div class="so-oficial">
@@ -748,8 +762,9 @@ const SHAPETYPE_136 = '<v:shapetype id="_x0000_t136" coordsize="21600,21600" o:s
   '<o:lock v:ext="edit" text="t" shapetype="t"/></v:shapetype>';
 
 // Marca d'água nativa do Word (WordArt diagonal atrás do texto), reconhecida também pelo LibreOffice.
-function marcaDagua(ctx, texto, cor) {
-  const w = 470, h = Math.min(130, w / (texto.length * 0.66)), idn = ctx.id();
+// w: comprimento do texto, em pontos (470 na A4; o telegrama, em A5, usa a mesma proporção da página)
+function marcaDagua(ctx, texto, cor, w = 470) {
+  const h = Math.min(130, w / (texto.length * 0.66)), idn = ctx.id();
   return `<w:r><w:rPr><w:noProof/></w:rPr><w:pict>${SHAPETYPE_136}<v:shape id="PowerPlusWaterMarkObject${idn}" o:spid="_x0000_s${2000 + idn}" type="#_x0000_t136" ` +
     `style="position:absolute;margin-left:0;margin-top:0;width:${w.toFixed(1)}pt;height:${h.toFixed(1)}pt;rotation:315;z-index:-251654144;` +
     `mso-position-horizontal:center;mso-position-horizontal-relative:page;mso-position-vertical:center;mso-position-vertical-relative:page" ` +
@@ -771,7 +786,7 @@ function tarja(spec, margEsqCm) {
     `<w:tblGrid>${grade([larg])}</w:tblGrid><w:tr><w:trPr><w:trHeight w:val="${I(0.55 * TW_CM)}" w:hRule="exact"/></w:trPr>` +
     `<w:tc><w:tcPr><w:tcW w:w="${larg}" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="${est.cor}"/><w:vAlign w:val="center"/></w:tcPr>${c}</w:tc></w:tr></w:tbl>`;
 }
-const marca = (ctx, spec) => ESTADOS[spec.estado].marca ? marcaDagua(ctx, ESTADOS[spec.estado].marca, ESTADOS[spec.estado].claro) : "";
+const marca = (ctx, spec, w = 470) => ESTADOS[spec.estado].marca ? marcaDagua(ctx, ESTADOS[spec.estado].marca, ESTADOS[spec.estado].claro, w) : "";
 function logoInline(ctx, parte, alturaCm, emp = EMP_ID) {
   const lg = LOGOS[emp];
   if (!lg) throw new Error(`O marca.json não tem o logo da empresa ${emp} (${EMPRESAS[emp].marca}).`);
@@ -1229,6 +1244,7 @@ function estilosXml() {
   s += est("TituloSemNumero", "Título sem indicativo numérico", centro + '<w:outlineLvl w:val="0"/>', tf + "<w:b/><w:bCs/><w:caps/>" + tc, "Normal");
   s += est("TituloSumario", "Título do sumário", centro, tf + "<w:b/><w:bCs/><w:caps/>" + tc, "Normal");
   s += est("TituloDocumento", "Título do documento", '<w:keepNext/><w:spacing w:before="0" w:after="60" w:line="276" w:lineRule="auto"/><w:ind w:firstLine="0"/><w:jc w:val="center"/>', tf + '<w:b/><w:bCs/><w:caps/>' + tc + '<w:sz w:val="26"/><w:szCs w:val="26"/>');
+  s += est("TituloTelegrama", "Título do telegrama", '<w:keepNext/><w:spacing w:before="0" w:after="240" w:line="276" w:lineRule="auto"/><w:ind w:firstLine="0"/><w:jc w:val="left"/>', "<w:b/><w:bCs/><w:caps/>");
   const peq = '<w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:ind w:firstLine="0"/>';
   s += est("Legenda", "caption", '<w:keepNext/><w:spacing w:before="240" w:after="60" w:line="240" w:lineRule="auto"/><w:ind w:firstLine="0"/><w:jc w:val="center"/>', '<w:sz w:val="20"/><w:szCs w:val="20"/>');
   s += est("Fonte", "Fonte de ilustração", '<w:spacing w:before="60" w:after="240" w:line="240" w:lineRule="auto"/><w:ind w:firstLine="0"/><w:jc w:val="left"/>', '<w:sz w:val="20"/><w:szCs w:val="20"/>');
@@ -1360,6 +1376,36 @@ function secao(hRid, fRid, marg, hCm, fCm, novaPagina) {
     `<w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="${t}" w:right="${r}" w:bottom="${b}" w:left="${l}" w:header="${I(hCm * TW_CM)}" w:footer="${I(fCm * TW_CM)}" w:gutter="0"/>` +
     `${BORDA_PAGINA}<w:cols w:space="708"/></w:sectPr>`;
 }
+/* Telegrama: anexo curto em meia folha A5 (14,8 × 21 cm), no fim do documento, curto ou longo. Não tem código próprio:
+   herda o código, a versão e o estado do documento. No topo, só uma linha com eles e a página; sem faixa, sem borda e
+   sem rodapé. A marca d'água do estado vem na mesma proporção da página A4. Mesma regra do gerador em Python. */
+const A5_TW = [8391, 11906], MARG_TELEGRAMA = [2.0, 1.5, 1.5, 1.5], MARCA_A5 = Math.round(470 * 14.8 / 21 * 10) / 10;
+const RE_TELEGRAMA = /^TELEGRAMA(?:\s+\d+)?\s*[–-]\s*(.+)$/i;
+const telegramasDe = spec => (spec.telegramas || []).filter(t => t && typeof t === "object");
+// título dentro do telegrama sai em negrito, sem número e fora do sumário: o telegrama não tem seções
+const corpoTelegrama = corpo => (corpo || []).map(b => b && /^h[1-5]$/.test(b.t) ? { t: "p", texto: `**${String(b.texto || "").replace(/\*/g, "")}**`, sem_recuo: true } : b);
+function secaoTelegrama(hRid, fRid) {
+  const [t, r, b, l] = MARG_TELEGRAMA.map(m => I(m * TW_CM));
+  return `<w:sectPr><w:headerReference w:type="default" r:id="${hRid}"/><w:footerReference w:type="default" r:id="${fRid}"/><w:type w:val="nextPage"/>` +
+    `<w:pgSz w:w="${A5_TW[0]}" w:h="${A5_TW[1]}"/><w:pgMar w:top="${t}" w:right="${r}" w:bottom="${b}" w:left="${l}" w:header="${I(0.8 * TW_CM)}" w:footer="${I(0.8 * TW_CM)}" w:gutter="0"/><w:cols w:space="708"/></w:sectPr>`;
+}
+function cabecalhoTelegrama(ctx, spec) {
+  const est = ESTADOS[spec.estado], sep = run("  ·  ", { sz: 8, cor: sec("404040") });
+  return par(marca(ctx, spec, MARCA_A5) + run(codigoVersao(spec), { sz: 8, cor: sec("404040") }) + sep + run(est.rotulo.toUpperCase(), { sz: 8, b: true, cor: est.cor }) +
+    sep + paginaXdeY({ sz: 8, cor: corTexto(), b: true }), { jc: "center", antes: 0, depois: 0, linha: 240, estilo: "Rodape", borda: '<w:bottom w:val="single" w:sz="4" w:space="4" w:color="BFBFBF"/>' });
+}
+// Fecha a última seção do documento. Com telegramas, ela fecha num parágrafo vazio e os telegramas seguem em A5, numa seção só, um por página.
+function fecharComTelegramas(ctx, spec, sect, partes, D) {
+  const tels = telegramasDe(spec);
+  if (!tels.length) return sect;
+  partes["word/header9.xml"] = ["hdr", cabecalhoTelegrama(ctx, spec)];
+  partes["word/footer9.xml"] = ["ftr", par("", { antes: 0, depois: 0, linha: 240, estilo: "Rodape" })];
+  const rh = ctx.rel(D, "header", "header9.xml"), rf = ctx.rel(D, "footer", "footer9.xml");
+  const larg = I((A5_TW[0] / TW_CM - MARG_TELEGRAMA[1] - MARG_TELEGRAMA[3]) * TW_CM);
+  let out = par("", { antes: 0, depois: 0, linha: 240, sect });
+  tels.forEach((t, i) => { out += par(run(`Telegrama ${i + 1} – ${t.titulo || ""}`), { estilo: "TituloTelegrama", quebra: i > 0 }) + blocos(ctx, corpoTelegrama(t.corpo), D, larg, false); });
+  return out + secaoTelegrama(rh, rf);
+}
 function montar(spec, conteudo) {
   const ctx = new Ctx(), D = "word/document.xml", est = ESTADOS[spec.estado], longo = spec.variante === "longo";
   const largT = I((21 - MARG_TIMBRADO[1] - MARG_TIMBRADO[3]) * TW_CM), largA = I((21 - MARG_ABNT[1] - MARG_ABNT[3]) * TW_CM);
@@ -1377,7 +1423,7 @@ function montar(spec, conteudo) {
     // empresa e documento já estão no cabeçalho
     if (spec.identificacao && spec.identificacao.length) corpo += blocoCampos(spec.identificacao, largT, 3.3);
     corpo += blocos(ctx, conteudo, D, largT, false);
-    corpo += secao(rh1, rf1, MARG_TIMBRADO, 1.2, 1.2, false);
+    corpo += fecharComTelegramas(ctx, spec, secao(rh1, rf1, MARG_TIMBRADO, 1.2, 1.2, false), partes, D);
   } else {
     // ---------------- capa (timbrado completo)
     const altura = 29.7 - MARG_TIMBRADO[0] - MARG_TIMBRADO[2];
@@ -1441,7 +1487,7 @@ function montar(spec, conteudo) {
       e = e.slice(0, k) + '<w:r><w:fldChar w:fldCharType="end"/></w:r>' + e.slice(k);
     }
     corpo = corpo.replace("@@SUMARIO@@", () => e);
-    corpo += secao(rh2, rf2, MARG_ABNT, 1.2, 1.2, true);
+    corpo += fecharComTelegramas(ctx, spec, secao(rh2, rf2, MARG_ABNT, 1.2, 1.2, true), partes, D);
   }
   ["styles", "numbering", "settings"].forEach(t => ctx.rel(D, t, `${t}.xml`));
   ctx.rel(D, "customXml", "../customXml/item1.xml");
@@ -2147,8 +2193,13 @@ async function lerTimbrado(ler, nomes, doc, numDoc, h) {
   let elementos = [];
   const achatar = el => { for (const c of el.childNodes) { if (c.namespaceURI !== W_NS) continue; if (c.localName === "sdt") { const s = filho(c, "sdtContent"); if (s) achatar(s); } else if (c.localName === "p" || c.localName === "tbl") elementos.push(c); } };
   achatar(doc.getElementsByTagNameNS(W_NS, "body")[0]);
-  const iCapa = elementos.findIndex(el => el.localName === "p" && filho(el, "pPr") && filho(filho(el, "pPr"), "sectPr"));
-  if (iCapa >= 0) { elementos = elementos.slice(iCapa + 1); spec.variante = spec.variante || "longo"; }
+  // capa do documento longo: tudo até o parágrafo que fecha a 1ª seção. Com telegramas, o parágrafo que fecha o corpo,
+  // logo antes do primeiro telegrama, não conta: o documento curto também o tem.
+  const estiloEl = el => { const pp = el.localName === "p" && filho(el, "pPr"); return pp ? attr(filho(pp, "pStyle"), "val") : null; };
+  const iTel = elementos.findIndex(el => estiloEl(el) === "TituloTelegrama");
+  const secoes = elementos.slice(0, iTel >= 0 ? iTel : elementos.length).map((el, i) => el.localName === "p" && filho(el, "pPr") && filho(filho(el, "pPr"), "sectPr") ? i : -1).filter(i => i >= 0);
+  if (iTel >= 0) secoes.pop();
+  if (secoes.length) { elementos = elementos.slice(secoes[0] + 1); spec.variante = spec.variante || "longo"; }
 
   const corpo = []; let destino = null, legenda = null, pular = null, identLida = false, lista = null, figuras = 0;
   const controle = {}, hist = [];
@@ -2198,6 +2249,7 @@ async function lerTimbrado(ler, nomes, doc, numDoc, h) {
     const { texto } = textoPar(el);
     const puro = texto.replace(/\*/g, "");
     if (!puro) { if (el.getElementsByTagNameNS("http://schemas.openxmlformats.org/drawingml/2006/main", "blip").length) figuras++; continue; }
+    if (estilo === "TituloTelegrama") { const m = RE_TELEGRAMA.exec(puro); const bl = { titulo: (m ? m[1] : puro).trim(), corpo: [] }; (spec.telegramas = spec.telegramas || []).push(bl); destino = bl; pular = null; lista = null; continue; }
     if (estilo === "TituloSumario") { pular = /^FOLHA DE CONTROLE/i.test(puro) ? "controle" : "sumario"; continue; }
     if (pular && /^TOC\d$/.test(estilo || "")) continue;
     if (pular === "controle" && estilo && !/^Heading/.test(estilo) && estilo !== "TituloSemNumero" && estilo !== "Normal") continue;
@@ -2382,6 +2434,36 @@ function lerTexto(str, markdown, tituloConhecido) {
   return organizar(itens, tituloConhecido);
 }
 
+// "TELEGRAMA – título" (parágrafo ou título) abre um telegrama: o que vem depois vai para ele.
+function separarTelegramas(blocos) {
+  const fora = [], telegramas = []; let atual = null;
+  for (const b of blocos || []) {
+    const m = b && (b.t === "p" || /^h[1-5]$/.test(b.t)) && RE_TELEGRAMA.exec(String(b.texto || "").replace(/\*/g, "").trim());
+    if (m) { atual = { titulo: m[1].trim(), corpo: [] }; telegramas.push(atual); continue; }
+    (atual ? atual.corpo : fora).push(b);
+  }
+  return { blocos: fora, telegramas };
+}
+// Corpo do telegrama de volta a texto, para editar na caixa: o mesmo formato que o lerTexto lê.
+function blocosParaTexto(blocos) {
+  const lista = (itens, marca, nivel = 0) => (itens || []).flatMap((it, i) => {
+    const t = typeof it === "string" ? it : (it && it.texto) || "", sub = typeof it === "string" ? [] : (it && it.sub) || [];
+    return [`${"  ".repeat(nivel)}${marca(i)} ${t}`].concat(sub.length ? lista(sub, marca, nivel + 1) : []);
+  });
+  const linha = cs => "| " + cs.map(c => String(c == null ? "" : c).replace(/\|/g, "/")).join(" | ") + " |";
+  return (blocos || []).map(b => {
+    const m = /^h([1-5])$/.exec(b.t || "");
+    if (m) return `${"#".repeat(+m[1])} ${b.texto}`;
+    if (b.t === "marcadores" || b.t === "checklist") return lista(b.itens, () => "-").join("\n");
+    if (b.t === "numerada") return lista(b.itens, i => `${i + 1}.`).join("\n");
+    if (b.t === "alineas") return lista(b.itens, i => `${String.fromCharCode(97 + i % 26)})`).join("\n");
+    if (b.t === "tabela") return (b.cabecalho ? [linha(b.cabecalho), linha(b.cabecalho.map(() => "---"))] : []).concat((b.linhas || []).map(linha)).join("\n");
+    if (b.t === "campos") return (b.itens || []).map(linha).join("\n");
+    if (b.t === "nota" || b.t === "destaque") return `**${b.rotulo || (b.t === "nota" ? "Nota" : "Importante")}:** ${b.texto || ""}`;
+    return b.texto || "";
+  }).filter(Boolean).join("\n\n");
+}
+
 const PREFIXO_TIPO = new RegExp("^(" + Object.values(TIPOS_CURTOS).concat(Object.values(TIPOS_LONGOS)).map(t => t.toUpperCase()).join("|") + ")\\s+[–-]\\s+", "i");
 function organizar(itens, tituloConhecido) {
   // documento que já estava no padrão: descarta linha de controle e quadro de identificação antigos
@@ -2439,7 +2521,7 @@ function organizar(itens, tituloConhecido) {
    O desenho segue as medidas do .docx (montar): faixa e bloco de controle, borda, marca d'água, rodapé com o logo,
    capa, folha de controle e sumário, que aqui já sai com as páginas. É prévia: a quebra de linha usa as métricas da
    Helvetica (a Arial do PDF), e a paginação pode diferir um pouco da do Word. O documento que vale é o .docx. */
-const PT_CM = 72 / 2.54, PAG_L = 595.28, PAG_A = 841.89;
+const PT_CM = 72 / 2.54, PAG_L = 595.28, PAG_A = 841.89, A5_L = 419.53, A5_A = 595.28;   // A5: o telegrama
 // Larguras (milésimos do corpo) dos códigos 32 a 255 da WinAnsiEncoding, tiradas das métricas AFM da Helvetica.
 const HELV = [278,278,355,556,556,889,667,191,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,278,278,584,584,584,556,1015,667,667,722,722,667,611,778,722,278,500,667,556,833,722,778,667,778,722,667,611,722,667,944,667,667,611,278,278,278,469,556,333,556,556,500,556,556,278,556,556,222,222,500,222,833,556,556,556,556,333,500,278,556,500,722,500,500,500,334,260,334,584,350,556,350,222,556,333,1000,556,556,333,1000,667,333,1000,350,611,350,350,222,222,333,333,350,556,1000,333,1000,500,333,944,350,500,667,278,333,556,556,556,556,260,556,333,737,370,556,584,333,737,333,400,584,333,333,333,556,537,278,333,333,365,556,834,834,834,611,667,667,667,667,667,667,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,500,556,556,556,556,278,278,278,278,556,556,556,556,556,556,556,584,611,556,556,556,556,500,556,500];
 const HELV_N = [278,333,474,556,556,889,722,238,333,333,389,584,278,333,278,278,556,556,556,556,556,556,556,556,556,556,333,333,584,584,584,611,975,722,722,722,722,667,611,778,722,278,556,722,611,833,722,778,667,778,722,667,611,722,667,944,667,667,611,333,278,333,584,556,333,556,611,556,611,556,333,611,611,278,278,556,278,889,611,611,611,611,389,556,333,611,556,778,556,556,500,389,280,389,584,350,556,350,278,556,500,1000,556,556,333,1000,667,333,1000,350,611,350,350,278,278,500,500,350,556,1000,333,1000,556,333,944,350,500,667,278,333,556,556,556,556,280,556,333,737,370,556,584,333,737,333,400,584,333,333,333,611,556,278,333,333,365,556,834,834,834,611,722,722,722,722,722,722,1000,722,667,667,667,667,278,278,278,278,722,722,778,778,778,778,778,584,778,722,722,722,722,667,667,611,556,556,556,556,556,556,889,556,556,556,556,556,278,278,278,278,611,611,611,611,611,611,611,584,611,611,611,611,611,556,611,556];
@@ -2471,13 +2553,16 @@ const fontePdf = k => k.mono ? "F5" : "F" + (1 + (k.b ? 1 : 0) + (k.i ? 2 : 0));
 // Uma página: operações de desenho em coordenadas do papel (pontos, origem no alto à esquerda). Função na lista é
 // resolvida só no fim, quando já se sabe o total de páginas e a página de cada título.
 class PaginaPdf {
-  constructor(indice, secao) { this.indice = indice; this.secao = secao; this.ops = []; }
-  texto(cs, k, x, y) {
-    if (cs.length) this.ops.push(`BT /${fontePdf(k)} ${numPdf(k.sz)} Tf ${corPdf(k.cor)} rg ${numPdf(k.esp || 0)} Tc ${numPdf(x)} ${numPdf(PAG_A - y)} Td (${textoPdf(cs)}) Tj ET`);
+  constructor(indice, secao) {
+    this.indice = indice; this.secao = secao; this.ops = [];
+    [this.L, this.A] = secao === "telegrama" ? [A5_L, A5_A] : [PAG_L, PAG_A];
   }
-  retangulo(x, y, w, h, cor) { this.ops.push(`${corPdf(cor)} rg ${numPdf(x)} ${numPdf(PAG_A - y - h)} ${numPdf(w)} ${numPdf(h)} re f`); }
-  linha(x1, y1, x2, y2, larg, cor) { this.ops.push(`${numPdf(larg)} w ${corPdf(cor)} RG ${numPdf(x1)} ${numPdf(PAG_A - y1)} m ${numPdf(x2)} ${numPdf(PAG_A - y2)} l S`); }
-  imagem(nome, x, y, w, h) { this.ops.push(`q ${numPdf(w)} 0 0 ${numPdf(h)} ${numPdf(x)} ${numPdf(PAG_A - y - h)} cm /${nome} Do Q`); }
+  texto(cs, k, x, y) {
+    if (cs.length) this.ops.push(`BT /${fontePdf(k)} ${numPdf(k.sz)} Tf ${corPdf(k.cor)} rg ${numPdf(k.esp || 0)} Tc ${numPdf(x)} ${numPdf(this.A - y)} Td (${textoPdf(cs)}) Tj ET`);
+  }
+  retangulo(x, y, w, h, cor) { this.ops.push(`${corPdf(cor)} rg ${numPdf(x)} ${numPdf(this.A - y - h)} ${numPdf(w)} ${numPdf(h)} re f`); }
+  linha(x1, y1, x2, y2, larg, cor) { this.ops.push(`${numPdf(larg)} w ${corPdf(cor)} RG ${numPdf(x1)} ${numPdf(this.A - y1)} m ${numPdf(x2)} ${numPdf(this.A - y2)} l S`); }
+  imagem(nome, x, y, w, h) { this.ops.push(`q ${numPdf(w)} 0 0 ${numPdf(h)} ${numPdf(x)} ${numPdf(this.A - y - h)} cm /${nome} Do Q`); }
 }
 
 /* ------------------------------------------------ parágrafos: estilos, trechos e quebra de linha */
@@ -2488,6 +2573,7 @@ const EST_PDF = {
   Heading: { sz: 12, linha: 1.5, antes: 18, depois: 12, jc: "left", keep: true },
   TituloSemNumero: { sz: 12, linha: 1.5, antes: 0, depois: 18, jc: "center", keep: true, b: true, caps: true, titulo: true },
   TituloSumario: { sz: 12, linha: 1.5, antes: 0, depois: 18, jc: "center", keep: true, b: true, caps: true, titulo: true },
+  TituloTelegrama: { sz: 12, linha: 1.15, antes: 0, depois: 12, jc: "left", keep: true, b: true, caps: true, titulo: true },
   TituloDocumento: { sz: 13, linha: 1.15, antes: 0, depois: 3, jc: "center", keep: true, b: true, caps: true, titulo: true },
   Legenda: { sz: 10, linha: 1, antes: 12, depois: 3, jc: "center", keep: true },
   Fonte: { sz: 10, linha: 1, antes: 3, depois: 12, jc: "left" },
@@ -2891,14 +2977,22 @@ function rodapeReduzidoPdf(pg, pdf, spec, margEsq) {
   let y = meio - m.h / 2; for (const r of m.rows) { r.desenhar(pg, x0 + c1, y); y += r.h; }
   pg.linha(x0, topo, x0 + larg, topo, 1.5, EMPRESA.cor);
 }
-function marcaDaguaPdf(spec) {
+function marcaDaguaPdf(spec, pg) {
   const est = ESTADOS[spec.estado];
   if (!est.marca) return "";
+  const L = pg ? pg.L : PAG_L, A = pg ? pg.A : PAG_A;   // na A5, a mesma proporção da A4
   const cs = codigosPdf(est.marca), k = { b: true, sz: 1 }, w1 = largCodigos(cs, k);
-  const sz = 470 / w1, c = Math.SQRT1_2, w = w1 * sz, h = 0.718 * sz;   // altura da maiúscula da Helvetica
+  const sz = 470 * (L / PAG_L) / w1, c = Math.SQRT1_2, w = w1 * sz, h = 0.718 * sz;   // altura da maiúscula da Helvetica
   // centro da página; o texto sobe da esquerda para a direita a 45°
-  const cx = PAG_L / 2, cy = PAG_A / 2, x = cx - (w / 2) * c + (h / 2) * c, y = cy - (w / 2) * c - (h / 2) * c;
+  const cx = L / 2, cy = A / 2, x = cx - (w / 2) * c + (h / 2) * c, y = cy - (w / 2) * c - (h / 2) * c;
   return `BT /F2 ${numPdf(sz)} Tf ${corPdf(est.claro)} rg 0 Tc ${numPdf(c)} ${numPdf(c)} ${numPdf(-c)} ${numPdf(c)} ${numPdf(x)} ${numPdf(y)} Tm (${textoPdf(cs)}) Tj ET`;
+}
+// a linha do topo do telegrama: código e versão, estado na cor dele e página, com um filete embaixo
+function cabecalhoTelegramaPdf(pg, spec, total) {
+  const est = ESTADOS[spec.estado], x0 = MARG_TELEGRAMA[3] * PT_CM, larg = (14.8 - MARG_TELEGRAMA[1] - MARG_TELEGRAMA[3]) * PT_CM;
+  const P = parPdf("Rodape", [tr(codigoVersao(spec) + "  ·  ", { sz: 8, cor: sec("404040") }), tr(est.rotulo.toUpperCase(), { sz: 8, b: true, cor: est.cor }),
+    tr(`  ·  Página ${pg.indice + 1} de ${total}`, { sz: 8, cor: corTexto(), b: true })], { jc: "center", bordaBase: { w: 0.5, esp: 4, cor: "BFBFBF" } });
+  let y = 0.8 * PT_CM; for (const r of medirPar(P, larg).rows) { r.desenhar(pg, x0, y); y += r.h; }
 }
 const bordaPaginaPdf = () => { const d = 28; return `0.75 w 0 0 0 RG ${d} ${d} ${numPdf(PAG_L - 2 * d)} ${numPdf(PAG_A - 2 * d)} re S`; };
 
@@ -3013,7 +3107,7 @@ class DocPdf {
     const recursos = `/Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R /F4 6 0 R /F5 7 0 R >> /XObject << ${this.imagens.map((_, i) => `/Im${i + 1} ${nImgs[i]} 0 R`).join(" ")} >>`;
     for (const pg of this.paginas) {
       const txt = pg.ops.map(o => typeof o === "function" ? o() : o).join("\n");
-      obj(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${numPdf(PAG_L)} ${numPdf(PAG_A)}] /Resources << ${recursos} >> /Contents ${n + 2} 0 R >>`);
+      obj(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${numPdf(pg.L)} ${numPdf(pg.A)}] /Resources << ${recursos} >> /Contents ${n + 2} 0 R >>`);
       obj("", enc.encode(txt));
     }
     const info = obj(`<< /Title ${textoInfo(String(titulo || ""))} /Producer (Timbrador - previa) >>`);
@@ -3078,8 +3172,15 @@ async function gerarPdf(spec, conteudo) {
     blocos.push(...corpo);
     paginarPdf(blocos, abrir("abnt", MARG_ABNT), largA, xA);
   }
+  const tels = telegramasDe(spec);
+  if (tels.length) {
+    const largT = (14.8 - MARG_TELEGRAMA[1] - MARG_TELEGRAMA[3]) * PT_CM, xT = MARG_TELEGRAMA[3] * PT_CM, bl = [];
+    tels.forEach((t, i) => bl.push(blocoPar(parPdf("TituloTelegrama", [tr(`Telegrama ${i + 1} – ${t.titulo || ""}`)], { quebra: i > 0 }), largT), ...blocosPdf(cx, corpoTelegrama(t.corpo), largT, false)));
+    paginarPdf(bl, () => ({ pg: pdf.pagina("telegrama"), topo: MARG_TELEGRAMA[0] * PT_CM, base: A5_A - MARG_TELEGRAMA[2] * PT_CM }), largT, xT);
+  }
   const total = pdf.paginas.length;
   for (const pg of pdf.paginas) {
+    if (pg.secao === "telegrama") { pg.ops = [marcaDaguaPdf(spec, pg)].concat(pg.ops); cabecalhoTelegramaPdf(pg, spec, total); continue; }
     const marg = pg.secao === "abnt" ? MARG_ABNT : MARG_TIMBRADO, corpoOps = pg.ops;
     pg.ops = [marcaDaguaPdf(spec)].concat(corpoOps);
     cabecalhoPdf(pg, spec, total, marg[3]);
@@ -4003,6 +4104,10 @@ function capaPdf(pg, spec, tipoNome, larg, x0) {
         ? "Não encontrei texto no corpo deste .docx. Costuma acontecer quando o conteúdo está só em imagem, em caixas de texto que o Word não expõe, ou quando o arquivo é um .doc antigo renomeado: abra no Word, use Arquivo > Salvar como > Documento do Word (.docx) e envie de novo. Se o texto for imagem (digitalização), copie o texto para um .txt."
         : "Não encontrei texto no arquivo: ele está vazio ou só tem espaços.");
       conteudo = lido;
+      // telegramas saem do corpo antes de assinaturas e anexos, que ficam no fim dele: os marcados no texto ("TELEGRAMA – título"); sem marca, os do documento timbrado (ou do documento base, no corpo novo)
+      { const sep = separarTelegramas(conteudo.blocos); conteudo.blocos = sep.blocos;
+        const tels = sep.telegramas.length ? sep.telegramas : (conteudo.ficha && conteudo.ficha.telegramas) || [];
+        usarTelegramas(tels, tels.length > 0); }
       // documento timbrado lido agora vira a base do próximo texto novo; conteúdo sem ficha e sem base começa documento novo
       if (!sobre) { base = null;
         if (lido.ficha && !buscado) try { conferirFicha(lido.ficha, arquivo.name); base = { ficha: JSON.parse(JSON.stringify(lido.ficha)) }; } catch (e) { /* não serve de base */ } }
@@ -4145,6 +4250,33 @@ function capaPdf(pg, spec, tipoNome, larg, x0) {
   $("soltar-anexos").addEventListener("dragleave", () => $("soltar-anexos").classList.remove("ativo"));
   $("soltar-anexos").addEventListener("drop", e => { e.preventDefault(); $("soltar-anexos").classList.remove("ativo"); adicionarAnexos(e.dataTransfer.files); });
   usarAnexos([], false);
+
+  // ---------------------------------------------------------------- telegramas: anexos curtos em A5, no fim do documento
+  // telegramasSel: {titulo, texto}; o texto vira blocos (lerTexto) na hora de gerar
+  let telegramasSel = [];
+  function mostrarTelegramas() {
+    const box = $("telegramas"); box.innerHTML = "";
+    telegramasSel.forEach((t, i) => {
+      const d = document.createElement("div"); d.className = "telegrama";
+      d.innerHTML = '<span class="tel-rotulo"></span><button type="button" title="Retirar este telegrama">×</button>' +
+        '<input type="text" class="tel-titulo" placeholder="Título do telegrama"><textarea class="tel-texto" placeholder="Texto do telegrama"></textarea>';
+      d.querySelector(".tel-rotulo").textContent = `Telegrama ${i + 1}`;
+      const ti = d.querySelector(".tel-titulo"), tx = d.querySelector(".tel-texto");
+      ti.value = t.titulo; tx.value = t.texto;
+      ti.addEventListener("input", () => { t.titulo = ti.value; });
+      tx.addEventListener("input", () => { t.texto = tx.value; });
+      d.querySelector("button").addEventListener("click", () => { telegramasSel.splice(i, 1); mostrarTelegramas(); agendarRascunho(); });
+      box.appendChild(d);
+    });
+  }
+  function usarTelegramas(lista, com) {
+    telegramasSel = (lista || []).map(t => ({ titulo: t.titulo || "", texto: typeof t.texto === "string" ? t.texto : blocosParaTexto(t.corpo) }));
+    $("com_telegramas").checked = !!com; $("bloco-telegramas").hidden = !com; mostrarTelegramas();
+  }
+  function addTelegrama() { telegramasSel.push({ titulo: "", texto: "" }); mostrarTelegramas(); $("telegramas").lastElementChild.querySelector(".tel-titulo").focus(); }
+  $("com_telegramas").addEventListener("change", () => { const com = $("com_telegramas").checked; $("bloco-telegramas").hidden = !com; if (com && !telegramasSel.length) addTelegrama(); });
+  $("add-telegrama").addEventListener("click", () => { addTelegrama(); agendarRascunho(); });
+  usarTelegramas([], false);
   // Os arquivos dos anexos não cabem no rascunho comum: ficam no IndexedDB deste navegador, achados pela impressão digital.
   // Banco próprio ("timbrador-anexos"): o "timbrador" guarda a pasta lembrada e já existe nos navegadores de quem usa.
   const abrirIDB = () => new Promise((ok, erro) => {
@@ -4367,6 +4499,13 @@ function capaPdf(pg, spec, tipoNome, larg, x0) {
       else delete spec.assinaturas_previstas;      // assinadas agora: deixam de ser só previstas
       if (!spec.com_anexos) { delete spec.com_anexos; delete spec.anexos_externos; }
       if (!spec.projeto) delete spec.projeto;
+      const tels = $("com_telegramas").checked ? telegramasSel.filter(t => t.titulo.trim() || t.texto.trim()) : [];
+      tels.forEach((t, i) => {
+        if (!t.titulo.trim()) antes.push({ campo: "bloco-telegramas", msg: `Telegrama ${i + 1}: informe o título.` });
+        if (!t.texto.trim()) antes.push({ campo: "bloco-telegramas", msg: `Telegrama ${i + 1} (${t.titulo.trim()}): escreva o texto.` });
+      });
+      spec.telegramas = tels.map(t => ({ titulo: t.titulo.trim(), corpo: lerTexto(t.texto, true, t.titulo.trim()).blocos }));
+      if (!spec.telegramas.length) delete spec.telegramas;
       if (modoRel()) {        // relatório de condução: a rodada nova é a versão nova
         const ra = relAnterior(), nova = rodadaDoForm();
         spec.rodadas = (ra ? ra.rodadas : []).concat([nova]);
@@ -4630,7 +4769,7 @@ function capaPdf(pg, spec, tipoNome, larg, x0) {
     "mudanca", "o_que_mudou", "aprovado_por", "substituido_por", "projeto", "assinatura_formato", "texto-colado",
     "rel-tipo", "rel-n", "rel-data", "rel-feito", "rel-oque", "rel-quem", "rel-ate", "rel-avanco", "rel-travou", "rel-depende",
     "rel-corrige", "rel-plano-versao", "rel-termo", "rel-situacao"];
-  const MARCAS_RASCUNHO = ["com_assinatura", "com_anexos", "obsoletar_anterior", "retirar_original", "rel-retirar", "rel-conducao"];
+  const MARCAS_RASCUNHO = ["com_assinatura", "com_anexos", "com_telegramas", "obsoletar_anterior", "retirar_original", "rel-retirar", "rel-conducao"];
   const OPCOES_RASCUNHO = ["empresa", "tipo", "area", "classificacao"];
   let restaurando = false, timerRascunho = 0;
   const quandoTxt = t => { const d = new Date(t), z = n => String(n).padStart(2, "0"); return `${z(d.getDate())}/${z(d.getMonth() + 1)} às ${z(d.getHours())}:${z(d.getMinutes())}`; };
@@ -4648,7 +4787,8 @@ function capaPdf(pg, spec, tipoNome, larg, x0) {
     for (const id of MARCAS_RASCUNHO) r.marcas[id] = $(id).checked;
     for (const id of OPCOES_RASCUNHO) { const o = $(id).selectedOptions[0]; if (o) r.opcoes[id] = o.textContent; }
     r.anexos = anexosSel.map(({ file, ...a }) => a);
-    if (!conteudo && !anterior && !r.campos.titulo && !r.campos["texto-colado"].trim() && !anexosSel.length) {   // tela vazia: nada a guardar
+    r.telegramas = telegramasSel;
+    if (!conteudo && !anterior && !r.campos.titulo && !r.campos["texto-colado"].trim() && !anexosSel.length && !telegramasSel.length) {   // tela vazia: nada a guardar
       try { localStorage.removeItem(RASCUNHO); } catch (e) { /* sem armazenamento */ }
       mostrarRascunho(); return;
     }
@@ -4686,6 +4826,7 @@ function capaPdf(pg, spec, tipoNome, larg, x0) {
       conteudo = r.conteudo || null; anterior = r.anterior || null; numeroAuto = r.numeroAuto !== false;
       usarEnvolvidos(r.envolvidos || [], !!(r.marcas && r.marcas.com_assinatura));
       usarAnexos(r.anexos || [], !!(r.marcas && r.marcas.com_anexos));
+      usarTelegramas(r.telegramas || [], !!(r.marcas && r.marcas.com_telegramas));
       // os arquivos dos anexos escolhidos voltam do IndexedDB, pela impressão digital
       if (anexosSel.some(a => !a.nome)) lerArquivosAnexos().then(arqs => {
         for (const a of anexosSel) { const x = !a.nome && arqs.find(y => y.sha256 === a.sha256); if (x) a.file = x.file; }

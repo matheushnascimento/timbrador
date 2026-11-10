@@ -473,10 +473,10 @@ SHAPETYPE_136 = ('<v:shapetype id="_x0000_t136" coordsize="21600,21600" o:spt="1
     '<o:lock v:ext="edit" text="t" shapetype="t"/></v:shapetype>')
 
 
-def marca_dagua_vml(ctx, texto, cor):
-    """Marca d'água nativa do Word (WordArt diagonal atrás do texto) — reconhecida também pelo LibreOffice."""
+def marca_dagua_vml(ctx, texto, cor, w=470.0):
+    """Marca d'água nativa do Word (WordArt diagonal atrás do texto) — reconhecida também pelo LibreOffice.
+    w: comprimento do texto, em pontos (470 na A4; o telegrama, em A5, usa a mesma proporção da página)."""
     n = len(texto)
-    w = 470.0
     h = min(130.0, w / (n * 0.66))
     idn = ctx.novo_id()
     return (f'<w:r><w:rPr><w:noProof/></w:rPr><w:pict>{SHAPETYPE_136}'
@@ -512,9 +512,9 @@ def tarja(spec, margem_esq_cm):
             f'{conteudo}</w:tc></w:tr></w:tbl>')
 
 
-def marca(ctx, spec):
+def marca(ctx, spec, w=470.0):
     est = ESTADOS[spec["estado"]]
-    return marca_dagua_vml(ctx, est["marca"], est["claro"]) if est["marca"] else ""
+    return marca_dagua_vml(ctx, est["marca"], est["claro"], w) if est["marca"] else ""
 
 
 def logo_inline(ctx, parte, ativos, altura_cm, emp=None):
@@ -1125,6 +1125,8 @@ def estilos_xml():
     s += est("TituloSumario", "Título do sumário", centro, tf + "<w:b/><w:bCs/><w:caps/>" + tc, prox="Normal")
     s += est("TituloDocumento", "Título do documento", '<w:keepNext/><w:spacing w:before="0" w:after="60" w:line="276" w:lineRule="auto"/><w:ind w:firstLine="0"/><w:jc w:val="center"/>',
              tf + '<w:b/><w:bCs/><w:caps/>' + tc + '<w:sz w:val="26"/><w:szCs w:val="26"/>')
+    s += est("TituloTelegrama", "Título do telegrama", '<w:keepNext/><w:spacing w:before="0" w:after="240" w:line="276" w:lineRule="auto"/><w:ind w:firstLine="0"/><w:jc w:val="left"/>',
+             "<w:b/><w:bCs/><w:caps/>")
     peq = '<w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:ind w:firstLine="0"/>'
     s += est("Legenda", "caption", '<w:keepNext/><w:spacing w:before="240" w:after="60" w:line="240" w:lineRule="auto"/><w:ind w:firstLine="0"/><w:jc w:val="center"/>', '<w:sz w:val="20"/><w:szCs w:val="20"/>')
     s += est("Fonte", "Fonte de ilustração", '<w:spacing w:before="60" w:after="240" w:line="240" w:lineRule="auto"/><w:ind w:firstLine="0"/><w:jc w:val="left"/>', '<w:sz w:val="20"/><w:szCs w:val="20"/>')
@@ -1232,6 +1234,11 @@ def validar(spec):
     for b in spec.get("corpo") or []:   # local e data sem data informada: a de emissão do documento
         if isinstance(b, dict) and b.get("t") == "local_data" and not b.get("data"):
             b["data"] = spec["data_emissao"]
+    for i, t in enumerate(spec.get("telegramas") or [], 1):
+        if not isinstance(t, dict) or not str(t.get("titulo", "")).strip():
+            raise SystemExit(f"Telegrama {i} sem título: informe 'titulo'.")
+        if not t.get("corpo"):
+            raise SystemExit(f'Telegrama {i} ("{t["titulo"]}") sem texto: informe o \'corpo\'.')
     spec["classificacao"] = spec.get("classificacao") or "Interno"
     spec["local"] = spec.get("local") or dado("cidade")
     return av
@@ -1247,6 +1254,59 @@ def secao(header_rid, footer_rid, margens, header_cm, footer_cm, tipo="nextPage"
 # Borda fina em todas as páginas, a 1 cm das bordas do papel (abaixo da tarja de estado)
 _b = '<w:{0} w:val="single" w:sz="6" w:space="28" w:color="000000"/>'
 BORDA_PAGINA = '<w:pgBorders w:offsetFrom="page">' + "".join(_b.format(l) for l in ("top", "left", "bottom", "right")) + "</w:pgBorders>"
+# Telegrama: anexo curto em meia folha A5 (14,8 × 21 cm), no fim do documento, curto ou longo. Não tem código próprio:
+# herda o código, a versão e o estado do documento. No topo, só uma linha com eles e a página; sem faixa, sem borda e
+# sem rodapé. A marca d'água do estado vem na mesma proporção da página A4.
+A5_TW = (8391, 11906)
+MARG_TELEGRAMA = (2.0, 1.5, 1.5, 1.5)   # topo (linha de controle), direita, base, esquerda — cm
+MARCA_A5 = round(470.0 * 14.8 / 21, 1)
+RE_TELEGRAMA = re.compile(r"^TELEGRAMA(?:\s+\d+)?\s*[–-]\s*(.+)$", re.I)
+
+
+def secao_telegrama(header_rid, footer_rid):
+    t, r, b, l = [int(m * TW_CM) for m in MARG_TELEGRAMA]
+    return (f'<w:sectPr><w:headerReference w:type="default" r:id="{header_rid}"/><w:footerReference w:type="default" r:id="{footer_rid}"/>'
+            f'<w:type w:val="nextPage"/><w:pgSz w:w="{A5_TW[0]}" w:h="{A5_TW[1]}"/><w:pgMar w:top="{t}" w:right="{r}" w:bottom="{b}" w:left="{l}" '
+            f'w:header="{int(0.8 * TW_CM)}" w:footer="{int(0.8 * TW_CM)}" w:gutter="0"/><w:cols w:space="708"/></w:sectPr>')
+
+
+def cabecalho_telegrama(ctx, spec):
+    """A linha do topo do telegrama: código e versão, estado na cor dele e página, com um filete embaixo."""
+    est = ESTADOS[spec["estado"]]
+    sep = run("  ·  ", sz=8, cor=sec("404040"))
+    return par(marca(ctx, spec, MARCA_A5) + run(codigo_versao(spec), sz=8, cor=sec("404040")) + sep + run(est["rotulo"].upper(), sz=8, b=True, cor=est["cor"])
+               + sep + pagina_x_de_y(sz=8, cor=cor_texto(), b=True), jc="center", antes=0, depois=0, linha=240, estilo="Rodape",
+               borda='<w:bottom w:val="single" w:sz="4" w:space="4" w:color="BFBFBF"/>')
+
+
+def telegramas_de(spec):
+    return [t for t in spec.get("telegramas") or [] if isinstance(t, dict)]
+
+
+def corpo_telegrama(corpo):
+    """Título dentro do telegrama sai em negrito, sem número e fora do sumário: o telegrama não tem seções."""
+    return [{"t": "p", "texto": f'**{str(b.get("texto", "")).replace("*", "")}**', "sem_recuo": True}
+            if isinstance(b, dict) and re.match(r"^h[1-5]$", str(b.get("t"))) else b for b in corpo or []]
+
+
+def fechar_com_telegramas(ctx, spec, sect, partes_extra, D):
+    """Fecha a última seção do documento. Com telegramas, ela fecha num parágrafo vazio e cada telegrama segue em A5,
+    numa seção só, um por página."""
+    tels = telegramas_de(spec)
+    if not tels:
+        return sect
+    hdr, ftr = "word/header9.xml", "word/footer9.xml"
+    partes_extra[hdr] = ("hdr", cabecalho_telegrama(ctx, spec))
+    partes_extra[ftr] = ("ftr", par("", antes=0, depois=0, linha=240, estilo="Rodape"))
+    rid_h, rid_f = ctx.rel(D, "header", "header9.xml"), ctx.rel(D, "footer", "footer9.xml")
+    larg = int((A5_TW[0] / TW_CM - MARG_TELEGRAMA[1] - MARG_TELEGRAMA[3]) * TW_CM)
+    out = par("", antes=0, depois=0, linha=240, sect=sect)
+    for i, t in enumerate(tels):
+        out += par(run(f'Telegrama {i + 1} – {t.get("titulo", "")}'), estilo="TituloTelegrama", quebra_antes=i > 0)
+        out += blocos(ctx, corpo_telegrama(t.get("corpo")), D, larg, False)
+    return out + secao_telegrama(rid_h, rid_f)
+
+
 MARG_TIMBRADO = (3.3, 2.0, 3.2, 3.0)   # topo (faixa + bloco de controle), direita, base (logo), esquerda — cm
 MARG_ABNT = (3.3, 2.0, 2.6, 3.0)   # topo (faixa + bloco de controle), direita, base (logo e título), esquerda — cm
 
@@ -1276,7 +1336,7 @@ def montar(spec, ativos, paginas_sumario=None):
             ident = spec["identificacao"]   # empresa e documento já estão no cabeçalho
             corpo += bloco_campos(ident, larg_t, 3.3)
         corpo += blocos(ctx, spec.get("corpo", []), D, larg_t, False)
-        corpo += secao(rid_h1, rid_f1, MARG_TIMBRADO, 1.2, 1.2, "nextPage").replace("<w:type w:val=\"nextPage\"/>", "")
+        corpo += fechar_com_telegramas(ctx, spec, secao(rid_h1, rid_f1, MARG_TIMBRADO, 1.2, 1.2, "nextPage").replace("<w:type w:val=\"nextPage\"/>", ""), partes_extra, D)
     else:
         # ---------------- capa (timbrado completo)
         altura = 29.7 - MARG_TIMBRADO[0] - MARG_TIMBRADO[2]
@@ -1373,7 +1433,7 @@ def montar(spec, ativos, paginas_sumario=None):
             k = entradas.rfind("</w:p>")
             entradas = entradas[:k] + '<w:r><w:fldChar w:fldCharType="end"/></w:r>' + entradas[k:]
         corpo = corpo.replace("@@SUMARIO@@", entradas)
-        corpo += secao(rid_h2, rid_f2, MARG_ABNT, 1.2, 1.2)
+        corpo += fechar_com_telegramas(ctx, spec, secao(rid_h2, rid_f2, MARG_ABNT, 1.2, 1.2), partes_extra, D)
 
     documento = f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document {NS}><w:body>{corpo}</w:body></w:document>'
     ctx.rel(D, "styles", "styles.xml"); ctx.rel(D, "numbering", "numbering.xml"); ctx.rel(D, "settings", "settings.xml")
@@ -1690,13 +1750,20 @@ def ler_timbrado(caminho, pasta_midia=None):
             elif c.tag in (_W + "p", _W + "tbl"):
                 elementos.append(c)
     achatar(corpo_xml)
-    # capa do documento longo: tudo até o parágrafo que fecha a 1ª seção
-    for idx, el in enumerate(elementos):
+    # capa do documento longo: tudo até o parágrafo que fecha a 1ª seção. Com telegramas, o parágrafo que fecha o
+    # corpo, logo antes do primeiro telegrama, não conta: o documento curto também o tem.
+    def _estilo_de(el):
         ppr = el.find(_W + "pPr") if el.tag == _W + "p" else None
-        if ppr is not None and ppr.find(_W + "sectPr") is not None:
-            elementos = elementos[idx + 1:]
-            spec.setdefault("variante", "longo")
-            break
+        st = ppr.find(_W + "pStyle") if ppr is not None else None
+        return st.get(_W + "val") if st is not None else None
+    i_tel = next((i for i, el in enumerate(elementos) if _estilo_de(el) == "TituloTelegrama"), len(elementos))
+    secoes = [i for i, el in enumerate(elementos[:i_tel])
+              if el.tag == _W + "p" and el.find(_W + "pPr") is not None and el.find(_W + "pPr").find(_W + "sectPr") is not None]
+    if i_tel < len(elementos) and secoes:
+        secoes.pop()
+    if secoes:
+        elementos = elementos[secoes[0] + 1:]
+        spec.setdefault("variante", "longo")
 
     corpo, destino = [], None     # destino: None=corpo | "ref" | "glo" | ("ap", bloco)
     legenda = None
@@ -1792,6 +1859,11 @@ def ler_timbrado(caminho, pasta_midia=None):
                 info["avisos"].append("Há figura no corpo; use --pasta-midia para extraí-la.")
             continue
         if not puro:
+            continue
+        if estilo == "TituloTelegrama":
+            m = RE_TELEGRAMA.match(puro)
+            bloco = {"titulo": (m.group(1) if m else puro).strip(), "corpo": []}
+            spec.setdefault("telegramas", []).append(bloco); destino = ("ap", bloco); modo_pular = None; ultimo_lista = None
             continue
         if estilo == "TituloSumario":
             modo_pular = "controle" if puro.upper().startswith("FOLHA DE CONTROLE") else "sumario"

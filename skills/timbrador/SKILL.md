@@ -155,11 +155,14 @@ Exemplo de abertura: `testes/espec-rel.json`. Na página, o relatório novo se a
   "assinatura_formato": "auto|linhas|tabela",
   "corpo": [ BLOCOS ],
   "referencias": ["..."], "glossario": [["Termo", "definição."]],
-  "apendices": [{"titulo": "...", "corpo": [ BLOCOS ]}], "anexos": [{"titulo": "...", "corpo": [ BLOCOS ]}]
+  "apendices": [{"titulo": "...", "corpo": [ BLOCOS ]}], "anexos": [{"titulo": "...", "corpo": [ BLOCOS ]}],
+  "telegramas": [{"titulo": "...", "corpo": [ BLOCOS ]}]
 }
 ```
 
 `identificacao` só no curto. `historico`, `sumario`, `referencias`, `glossario`, `apendices`, `anexos` só no longo (sem `historico`, o gerador cria a linha de emissão inicial). `variante` ("curto"/"longo") é deduzida do tipo; informe só para forçar. `com_assinatura` e `envolvidos` não viram assinatura no gerador: ficam como `assinaturas_previstas` (seção 5). O relatório de condução acrescenta `rodadas` (seção 4).
+
+`telegramas` (curto e longo): anexos curtos no fim do documento, cada um em meia folha A5, sem código próprio. Herdam o código, a versão e o estado do documento, que saem numa linha no topo com a página. Títulos (`h1`…`h5`) dentro do telegrama saem em negrito, sem número. Na página, a linha "TELEGRAMA – título" no texto colado abre um telegrama.
 
 Blocos de `corpo`:
 
