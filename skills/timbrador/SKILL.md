@@ -93,7 +93,7 @@ Depois, gere a versão de arquivo único com `--embutir-logos marca.json --saida
 
 **Nome do arquivo**: `CÓDIGO_vVERSÃO_ESTADO_titulo.docx` (barra do código vira hífen).
 
-**Classificação**: Público, Interno (padrão), Confidencial.
+**Classificação**: Público, Interno (padrão), Confidencial. Confidencial exige `acesso_restrito` (nomes ou cargos, separados por vírgula: quem pode ler); a palavra CONFIDENCIAL sai na linha de controle de todas as páginas, inclusive nos telegramas, e a lista de acesso aparece abaixo do título (curto) ou na folha de controle (longo). Na página, com Confidencial marcado, nada do documento fica guardado no navegador (rascunho e anexos). **Onde fica o confidencial**: numa pasta chamada `Confidencial`, com permissão só para quem pode ler. Grave o .docx lá (`--saida` dentro dela; fora dela o gerador avisa); na página, ela é conectada à parte e recebe o documento, a cópia obsoleta e os anexos. A lista mestra fica na pasta comum, aberta a todos, e do confidencial guarda só um esqueleto (código, versão, estado e data, `"titulo": "Documento confidencial"`, `"confidencial": true`). Os inventários (gerador, página e Inventariar.ps1) pulam qualquer pasta `Confidencial` e acusam documento confidencial achado fora dela.
 
 Quadro A – Tipos padrão (a variante define o formato; `tipos_extra` do marca.json acrescenta outros e `tipos_ativos` limita os de documento novo)
 
@@ -145,7 +145,7 @@ Exemplo de abertura: `testes/espec-rel.json`. Na página, o relatório novo se a
   "tipo": "POP", "area": "ECO", "numero": 3, "ano": 2026,
   "titulo": "Cadastro de anúncios", "subtitulo": "opcional", "titulo_curto": "opcional, rodapé das páginas internas",
   "estado": "MINUTA", "versao": "1.0-r1", "data_emissao": "15/09/2026",
-  "classificacao": "Interno", "area_nome": "opcional, sobrescreve o nome da área", "projeto": "opcional; obrigatório no PLN",
+  "classificacao": "Interno", "acesso_restrito": "só se Confidencial", "area_nome": "opcional, sobrescreve o nome da área", "projeto": "opcional; obrigatório no PLN",
   "elaborado_por": "", "revisado_por": "", "aprovado_por": "", "cargo_aprovador": "", "data_aprovacao": "",
   "vigencia": "", "substitui": "", "substituido_por": "", "motivo_obsoleto": "",
   "identificacao": [["Destinatário", "..."], ["Assunto", "..."]],
@@ -155,11 +155,14 @@ Exemplo de abertura: `testes/espec-rel.json`. Na página, o relatório novo se a
   "assinatura_formato": "auto|linhas|tabela",
   "corpo": [ BLOCOS ],
   "referencias": ["..."], "glossario": [["Termo", "definição."]],
-  "apendices": [{"titulo": "...", "corpo": [ BLOCOS ]}], "anexos": [{"titulo": "...", "corpo": [ BLOCOS ]}]
+  "apendices": [{"titulo": "...", "corpo": [ BLOCOS ]}], "anexos": [{"titulo": "...", "corpo": [ BLOCOS ]}],
+  "telegramas": [{"titulo": "...", "corpo": [ BLOCOS ]}]
 }
 ```
 
 `identificacao` só no curto. `historico`, `sumario`, `referencias`, `glossario`, `apendices`, `anexos` só no longo (sem `historico`, o gerador cria a linha de emissão inicial). `variante` ("curto"/"longo") é deduzida do tipo; informe só para forçar. `com_assinatura` e `envolvidos` não viram assinatura no gerador: ficam como `assinaturas_previstas` (seção 5). O relatório de condução acrescenta `rodadas` (seção 4).
+
+`telegramas` (curto e longo): anexos curtos no fim do documento, cada um em meia folha A5, sem código próprio. Herdam o código, a versão e o estado do documento, que saem numa linha no topo com a página. Títulos (`h1`…`h5`) dentro do telegrama saem em negrito, sem número. Na página, a linha "TELEGRAMA – título" no texto colado abre um telegrama.
 
 Blocos de `corpo`:
 

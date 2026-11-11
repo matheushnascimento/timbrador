@@ -27,6 +27,7 @@ grava("oficial.json", numero=5, titulo="Horário de verão", **oficial)
 grava("projeto.json", numero=6, titulo="Escala da loja", projeto="Loja Nova", **oficial)
 grava("minuta.json", numero=None, titulo="Uniformes novos")
 grava("modelo.json", numero=None, titulo="Modelo de comunicação", modelo=True)
+grava("confidencial.json", numero=7, titulo="Assunto sigiloso", classificacao="Confidencial", acesso_restrito="Diretoria", **oficial)
 json.dump({"empresa": "ACME", "tipo": "PLN", "area": "ECO", "numero": 1, "titulo": "Loja nova no marketplace", "projeto": "Loja Nova",
            "estado": "OFICIAL", "aprovado_por": "Fulano de Tal", "data_aprovacao": "01/10/2026", "elaborado_por": "Fulano de Tal",
            "corpo": [{"t": "h1", "texto": "Objetivo"}, {"t": "p", "texto": "Abrir a loja."}]},
@@ -44,6 +45,10 @@ g "$saida/projeto.json" --saida "$docs"
 cp "$docs"/ACME-CI-RH-006-*.docx "$docs/Projetos/Loja Nova/"
 g "$saida/minuta.json" --saida "$docs/Projetos/Loja Nova"
 g "$saida/modelo.json" --saida "$docs/Modelos"
+# confidencial: na pasta Confidencial (fora da varredura) e uma cópia esquecida na pasta comum, que os dois acusam
+mkdir -p "$docs/Confidencial"
+g "$saida/confidencial.json" --saida "$docs/Confidencial"
+cp "$docs/Confidencial"/ACME-CI-RH-007-*.docx "$docs/"
 # relatório de condução: plano e três versões (a lista do relatório fica à parte, só para publicar)
 g "$saida/plano.json" --saida "$saida/rel" --lista "$saida/rel"
 g "$raiz/testes/espec-rel.json" --saida "$saida/rel" --lista "$saida/rel"
@@ -60,7 +65,9 @@ json.dump({"lista_mestra": "Lista de Teste", "padrao": "ACME-POL-ADM-001", "atua
     {"codigo": "ACME-CI-RH-001/2026", "titulo": "Saiu da pasta", "empresa": "ACME", "tipo": "CI", "area": "RH", "numero": 1, "ano": 2026,
      "versao": "1.0", "estado": "OFICIAL", "arquivo": "x.docx", "pasta": ".", "registrado_em": "01/09/2026 10:00"},
     {"codigo": "ACME-CI-RH-002/2026", "titulo": "Em outra pasta", "empresa": "ACME", "tipo": "CI", "area": "RH", "numero": 2, "ano": 2026,
-     "versao": "1.0", "estado": "OFICIAL", "arquivo": "y.docx", "pasta": "Arquivo morto", "registrado_em": "01/09/2026 10:00"}]},
+     "versao": "1.0", "estado": "OFICIAL", "arquivo": "y.docx", "pasta": "Arquivo morto", "registrado_em": "01/09/2026 10:00"},
+    {"codigo": "ACME-POL-ADM-009", "titulo": "Documento confidencial", "empresa": "ACME", "tipo": "POL", "area": "ADM", "numero": 9,
+     "versao": "2.0", "estado": "OFICIAL", "confidencial": True, "pasta": "Confidencial/Políticas (POL)", "registrado_em": "01/09/2026 10:00"}]},
     open(sys.argv[1], "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 PY
 cp "$docs/lista-mestra.json" "$saida/lista-antes.json"

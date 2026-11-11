@@ -98,6 +98,7 @@ function Ficha-Do-Docx([string]$caminho) {
         if ($m.Groups[4].Value -ne "XXX") { $spec["numero"] = [int]$m.Groups[4].Value }
         if ($m.Groups[5].Success) { $spec["ano"] = [int]$m.Groups[5].Value }
         foreach ($t in $TARJAS.Keys) { if ($cab.Contains($t)) { $spec["estado"] = $TARJAS[$t]; break } }
+        if ($cab -cmatch "\bCONFIDENCIAL\b") { $spec["classificacao"] = "Confidencial" }
         $ma = [regex]::Match($cab, "Aprovado por (.+?) em (\d{2}/\d{2}/\d{4})")
         if ($ma.Success) { $spec["aprovado_por"] = $ma.Groups[1].Value.Trim(); $spec["data_aprovacao"] = $ma.Groups[2].Value }
       }
@@ -264,7 +265,14 @@ if (-not $destino.ToLower().EndsWith(".json")) { $destino = Join-Path $destino "
 # Pastas fora da varredura: Modelos guarda os arquivos de partida, que nao sao documentos. Obsoletos e lida, mas so
 # decide a entrada de um codigo que nao tem mais nenhuma versao em uso. Mesmas regras do --inventariar do gerador.
 $PASTAS_IGNORADAS = @("modelos")
-$pular = @($Ignorar | ForEach-Object { $_.ToLower() }) + $PASTAS_IGNORADAS
+# Documento confidencial mora numa pasta chamada Confidencial, com permissao so para quem pode ler. A pasta fica fora da
+# varredura (quem nao tem acesso nao trava; quem tem nao copia nada dela para a lista), e a lista mestra, aberta a todos,
+# guarda do confidencial so um esqueleto: codigo, versao, estado e data. Mesmas regras da pagina e do gerador.
+$TITULO_CONFIDENCIAL = "Documento confidencial"
+$FORA_DO_CONFIDENCIAL = @("responsavel", "arquivo", "projeto", "substituido_por", "plano", "encerrado_por", "rodadas_sha256")
+function Eh-Confidencial($spec) { return ("$($spec['classificacao'])".Trim().ToLower() -eq "confidencial") }
+$puladas = @(); $confidenciais = @()
+$pular = @($Ignorar | ForEach-Object { $_.ToLower() }) + $PASTAS_IGNORADAS + @("confidencial")
 # caminho relativo a raiz, sempre com "/" (como o gerador e a pagina registram a pasta)
 function Relativo([string]$caminho) { return $caminho.Substring($raiz.Length).TrimStart("\", "/").Replace("\", "/") }
 function Fora-Da-Varredura([string]$rel) {
@@ -275,11 +283,12 @@ $visitadas = New-Object System.Collections.Generic.HashSet[string]
 [void]$visitadas.Add("")
 foreach ($d in Get-ChildItem -LiteralPath $raiz -Recurse -Directory -ErrorAction SilentlyContinue) {
   $r = Relativo $d.FullName
+  if ($d.Name.ToLower() -eq "confidencial") { $puladas += $r }
   if (-not (Fora-Da-Varredura $r)) { [void]$visitadas.Add($r) }
 }
 
 $achados = @(); $semId = @(); $ignorados = 0; $modelos = @()
-foreach ($arq in Get-ChildItem -LiteralPath $raiz -Recurse -File) {
+foreach ($arq in Get-ChildItem -LiteralPath $raiz -Recurse -File -ErrorAction SilentlyContinue) {
   if ($arq.Name.StartsWith("~$") -or $arq.Name.StartsWith(".")) { continue }
   $pastaRel = Relativo $arq.DirectoryName
   if (Fora-Da-Varredura $pastaRel) { continue }
@@ -442,11 +451,28 @@ foreach ($chave in @($porCodigo.Keys | Sort-Object)) {
       }
     }
   }
+  foreach ($i in $itens) {
+    if (Eh-Confidencial $i.spec) { $alertas += ("{0}: documento confidencial fora da pasta Confidencial (esta em {1}). Quem tem acesso a pasta comum pode le-lo: mova-o para a pasta Confidencial." -f $i.nome, $i.pasta) }
+  }
+  $conf = Eh-Confidencial $s
+  if ($conf) {
+    # confidencial sem numero: nao reserva nada, e o esqueleto nao diria qual e
+    if (-not $numero) { $existentes.Remove($chave) | Out-Null; continue }
+    $reg = [ordered]@{
+      codigo = $s["codigo"]; titulo = $TITULO_CONFIDENCIAL; empresa = $s["empresa"]; tipo = $s["tipo"]; area = $s["area"]
+      numero = $numero; ano = $ano; versao = $s["versao"]; estado = $s["estado"]; data = $data; confidencial = $true
+      pasta = $atual.pasta; origem = $atual.origem
+    }
+    if ($itens.Count -gt 1) { $reg["arquivos"] = $itens.Count }
+  }
   # mesma regra do gerador: a entrada antiga e atualizada, e o que so valia para a obsoleta nao sobrevive
   $novo = [ordered]@{}
   if ($antes) { foreach ($p in $antes.PSObject.Properties) { $novo[$p.Name] = $p.Value } }
   foreach ($k in $reg.Keys) { $novo[$k] = $reg[$k] }
   foreach ($k in @("substituido_por", "motivo_obsoleto")) { if (-not $reg.Contains($k) -and $novo.Contains($k)) { $novo.Remove($k) } }
+  # confidencial: o esqueleto apaga o que a entrada tinha antes; deixou de ser confidencial, a marca sai
+  $tirar = if ($conf) { $FORA_DO_CONFIDENCIAL } else { @("confidencial") }
+  foreach ($k in $tirar) { if (-not $reg.Contains($k) -and $novo.Contains($k)) { $novo.Remove($k) } }
   $novo["registrado_em"] = if ($antes -and $antes.registrado_em) { $antes.registrado_em } else { $agora }
   $novo["atualizado_em"] = $agora
   $documentos += ,$novo
@@ -458,7 +484,8 @@ $removidas = @(); $naoConferidas = @()
 foreach ($c in @($existentes.Keys)) {
   $d = $existentes[$c]
   $p = "$($d.pasta)".Replace("\", "/")
-  if ($null -eq $d.PSObject.Properties["pasta"]) { $naoConferidas += "$($d.codigo) (sem pasta registrada)" }
+  if (Valor $d "confidencial") { $confidenciais += "$($d.codigo)" }   # esta na pasta Confidencial, que nao e varrida
+  elseif ($null -eq $d.PSObject.Properties["pasta"]) { $naoConferidas += "$($d.codigo) (sem pasta registrada)" }
   else {
     if ($p -eq ".") { $p = "" }
     $ignorada = $false
@@ -509,6 +536,8 @@ if ($removidas.Count -gt 0) {
   Write-Host ("  Sairam da lista {0} entrada(s) cujo arquivo nao esta mais na pasta:" -f $removidas.Count)
   foreach ($x in $removidas) { Write-Host "    $x" }
 }
+if ($puladas.Count -gt 0) { Write-Host ("  Pasta Confidencial fora da varredura ({0}): o que esta nela nao entra na lista, nem o titulo." -f ($puladas -join "; ")) }
+if ($confidenciais.Count -gt 0) { Write-Host ("  {0} documento(s) confidencial(is) na lista ficaram sem conferir (estao na pasta Confidencial): {1}" -f $confidenciais.Count, ($confidenciais -join "; ")) }
 if ($naoConferidas.Count -gt 0) {
   Write-Host ("  {0} entrada(s) ficaram sem conferir (pasta nao varrida): {1}" -f $naoConferidas.Count, ($naoConferidas -join "; "))
 }

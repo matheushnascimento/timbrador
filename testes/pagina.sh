@@ -19,7 +19,22 @@ d.update(empresa="GTESTE", estado="EM_APROVACAO", com_assinatura=True, assinatur
          envolvidos=[{"nome": "Ana Teste", "cargo": "Diretora", "papel": "Aprovou"}])
 json.dump(d, open(sys.argv[2], "w", encoding="utf-8"), ensure_ascii=False)
 PY0
-specs=("$raiz/testes/espec-curto.json" "$raiz/testes/espec-longo.json" "$saida/grupo.json")
+# telegramas (curto e longo): meia folha A5 no fim do documento, pelos dois caminhos
+python3 - "$raiz/testes/espec-curto.json" "$raiz/testes/espec-longo.json" "$saida" <<'PY1'
+import json, os, sys
+tel = [{"titulo": "Recibo de entrega", "corpo": [{"t": "p", "texto": "Recebi o material em **perfeito estado**."}, {"t": "h2", "texto": "Itens"},
+                                                 {"t": "marcadores", "itens": ["um", "dois"]}, {"t": "campos", "itens": [["Recebido por", "Ana Teste"]]}]},
+       {"titulo": "Aviso", "corpo": [{"t": "p", "texto": "Texto curto."}]}]
+for orig, nome in ((sys.argv[1], "telegrama-curto.json"), (sys.argv[2], "telegrama-longo.json")):
+    d = json.load(open(orig, encoding="utf-8"))
+    d.update(telegramas=tel, titulo=d["titulo"] + " com telegrama")
+    json.dump(d, open(os.path.join(sys.argv[3], nome), "w", encoding="utf-8"), ensure_ascii=False)
+    # confidencial: CONFIDENCIAL em todas as páginas (também no telegrama) e a lista de quem pode ler
+    d.update(classificacao="Confidencial", acesso_restrito="Diretoria, Ana Teste", titulo=d["titulo"].replace(" com telegrama", " confidencial"))
+    json.dump(d, open(os.path.join(sys.argv[3], nome.replace("telegrama", "confidencial")), "w", encoding="utf-8"), ensure_ascii=False)
+PY1
+specs=("$raiz/testes/espec-curto.json" "$raiz/testes/espec-longo.json" "$saida/grupo.json" "$saida/telegrama-curto.json" "$saida/telegrama-longo.json"
+       "$saida/confidencial-curto.json" "$saida/confidencial-longo.json")
 node "$raiz/testes/pagina.js" "$saida/marca.json" "$saida/pagina" "${specs[@]}" >/dev/null || { echo "  FALHA página não gerou"; exit 1; }
 # sem LibreOffice para o gerador: a página não numera o sumário, então o gerador também não
 for s in "${specs[@]}"; do TIMBRADOR_SOFFICE=false python3 "$ger" "$s" --marca "$raiz/testes/marca.teste.json" --saida "$saida/gerador" >/dev/null; done

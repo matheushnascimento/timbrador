@@ -473,10 +473,10 @@ SHAPETYPE_136 = ('<v:shapetype id="_x0000_t136" coordsize="21600,21600" o:spt="1
     '<o:lock v:ext="edit" text="t" shapetype="t"/></v:shapetype>')
 
 
-def marca_dagua_vml(ctx, texto, cor):
-    """Marca d'água nativa do Word (WordArt diagonal atrás do texto) — reconhecida também pelo LibreOffice."""
+def marca_dagua_vml(ctx, texto, cor, w=470.0):
+    """Marca d'água nativa do Word (WordArt diagonal atrás do texto) — reconhecida também pelo LibreOffice.
+    w: comprimento do texto, em pontos (470 na A4; o telegrama, em A5, usa a mesma proporção da página)."""
     n = len(texto)
-    w = 470.0
     h = min(130.0, w / (n * 0.66))
     idn = ctx.novo_id()
     return (f'<w:r><w:rPr><w:noProof/></w:rPr><w:pict>{SHAPETYPE_136}'
@@ -512,9 +512,9 @@ def tarja(spec, margem_esq_cm):
             f'{conteudo}</w:tc></w:tr></w:tbl>')
 
 
-def marca(ctx, spec):
+def marca(ctx, spec, w=470.0):
     est = ESTADOS[spec["estado"]]
-    return marca_dagua_vml(ctx, est["marca"], est["claro"]) if est["marca"] else ""
+    return marca_dagua_vml(ctx, est["marca"], est["claro"], w) if est["marca"] else ""
 
 
 def logo_inline(ctx, parte, ativos, altura_cm, emp=None):
@@ -567,6 +567,20 @@ def codigo_versao(spec):
     return f'{spec["codigo"]}  ·  v{spec["versao"]}'
 
 
+# Documento confidencial: só as pessoas nomeadas nele ou autorizadas pela direção. A palavra CONFIDENCIAL
+# vai na linha de controle de todas as páginas, para que uma folha solta também diga o que é, e quem pode ler aparece
+# logo abaixo do título (curto) ou na folha de controle (longo).
+COR_CONFIDENCIAL = "C00000"
+
+
+def eh_confidencial(spec):
+    return str(spec.get("classificacao") or "").strip().lower() == "confidencial"
+
+
+def marca_confidencial(sz=8):
+    return run("CONFIDENCIAL", sz=sz, b=True, cor=COR_CONFIDENCIAL) + run("  ·  ", sz=sz, cor=sec("404040"))
+
+
 def pagina_x_de_y(sz=8, cor="404040", b=False):
     return run("Página ", sz=sz, cor=cor, b=b) + campo("PAGE", "1", sz=sz, cor=cor, b=b) + run(" de ", sz=sz, cor=cor, b=b) + campo("NUMPAGES", "1", sz=sz, cor=cor, b=b)
 
@@ -576,7 +590,8 @@ def linhas_controle(ctx, spec):
     texto = est["rodape"]
     if spec["estado"] == "OFICIAL" and spec.get("aprovado_por"):
         texto = f'Aprovado por {spec["aprovado_por"]} em {spec.get("data_aprovacao", "")}. ' + texto
-    linha1 = par(marca(ctx, spec) + run(codigo_versao(spec) + "  ·  ", sz=8, cor=sec("404040")) + pagina_x_de_y(sz=8, cor=cor_texto(), b=True),
+    linha1 = par(marca(ctx, spec) + run(codigo_versao(spec) + "  ·  ", sz=8, cor=sec("404040"))
+                 + (marca_confidencial() if eh_confidencial(spec) else "") + pagina_x_de_y(sz=8, cor=cor_texto(), b=True),
                  jc="center", antes=80, depois=0, linha=240, estilo="Rodape")
     linha2 = par(run(texto, sz=7.5, cor=est["cor"] if spec["estado"] != "OFICIAL" else sec("404040"), b=spec["estado"] != "OFICIAL"),
                  jc="center", antes=0, depois=0, linha=240, estilo="Rodape")
@@ -1125,6 +1140,8 @@ def estilos_xml():
     s += est("TituloSumario", "Título do sumário", centro, tf + "<w:b/><w:bCs/><w:caps/>" + tc, prox="Normal")
     s += est("TituloDocumento", "Título do documento", '<w:keepNext/><w:spacing w:before="0" w:after="60" w:line="276" w:lineRule="auto"/><w:ind w:firstLine="0"/><w:jc w:val="center"/>',
              tf + '<w:b/><w:bCs/><w:caps/>' + tc + '<w:sz w:val="26"/><w:szCs w:val="26"/>')
+    s += est("TituloTelegrama", "Título do telegrama", '<w:keepNext/><w:spacing w:before="0" w:after="240" w:line="276" w:lineRule="auto"/><w:ind w:firstLine="0"/><w:jc w:val="left"/>',
+             "<w:b/><w:bCs/><w:caps/>")
     peq = '<w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="auto"/><w:ind w:firstLine="0"/>'
     s += est("Legenda", "caption", '<w:keepNext/><w:spacing w:before="240" w:after="60" w:line="240" w:lineRule="auto"/><w:ind w:firstLine="0"/><w:jc w:val="center"/>', '<w:sz w:val="20"/><w:szCs w:val="20"/>')
     s += est("Fonte", "Fonte de ilustração", '<w:spacing w:before="60" w:after="240" w:line="240" w:lineRule="auto"/><w:ind w:firstLine="0"/><w:jc w:val="left"/>', '<w:sz w:val="20"/><w:szCs w:val="20"/>')
@@ -1232,7 +1249,28 @@ def validar(spec):
     for b in spec.get("corpo") or []:   # local e data sem data informada: a de emissão do documento
         if isinstance(b, dict) and b.get("t") == "local_data" and not b.get("data"):
             b["data"] = spec["data_emissao"]
+    for i, t in enumerate(spec.get("telegramas") or [], 1):
+        if not isinstance(t, dict) or not str(t.get("titulo", "")).strip():
+            raise SystemExit(f"Telegrama {i} sem título: informe 'titulo'.")
+        if not t.get("corpo"):
+            raise SystemExit(f'Telegrama {i} ("{t["titulo"]}") sem texto: informe o \'corpo\'.')
     spec["classificacao"] = spec.get("classificacao") or "Interno"
+    acesso = spec.get("acesso_restrito")
+    if isinstance(acesso, (list, tuple)):
+        acesso = ", ".join(str(a).strip() for a in acesso if str(a).strip())
+    acesso = re.sub(r"\s+", " ", str(acesso or "")).strip()
+    if eh_confidencial(spec):
+        spec["classificacao"] = "Confidencial"
+        if acesso:
+            spec["acesso_restrito"] = acesso
+        elif spec["estado"] == "OBSOLETO":
+            spec.pop("acesso_restrito", None)
+            av.append("Documento confidencial sem a lista de quem pode ler: a cópia obsoleta sai sem ela.")
+        else:
+            raise SystemExit("Documento confidencial precisa dizer quem pode ler: informe 'acesso_restrito' "
+                             "(nomes ou cargos, separados por vírgula; por exemplo, 'Diretoria, Fulano de Tal').")
+    else:
+        spec.pop("acesso_restrito", None)
     spec["local"] = spec.get("local") or dado("cidade")
     return av
 
@@ -1247,6 +1285,59 @@ def secao(header_rid, footer_rid, margens, header_cm, footer_cm, tipo="nextPage"
 # Borda fina em todas as páginas, a 1 cm das bordas do papel (abaixo da tarja de estado)
 _b = '<w:{0} w:val="single" w:sz="6" w:space="28" w:color="000000"/>'
 BORDA_PAGINA = '<w:pgBorders w:offsetFrom="page">' + "".join(_b.format(l) for l in ("top", "left", "bottom", "right")) + "</w:pgBorders>"
+# Telegrama: anexo curto em meia folha A5 (14,8 × 21 cm), no fim do documento, curto ou longo. Não tem código próprio:
+# herda o código, a versão e o estado do documento. No topo, só uma linha com eles e a página; sem faixa, sem borda e
+# sem rodapé. A marca d'água do estado vem na mesma proporção da página A4.
+A5_TW = (8391, 11906)
+MARG_TELEGRAMA = (2.0, 1.5, 1.5, 1.5)   # topo (linha de controle), direita, base, esquerda — cm
+MARCA_A5 = round(470.0 * 14.8 / 21, 1)
+RE_TELEGRAMA = re.compile(r"^TELEGRAMA(?:\s+\d+)?\s*[–-]\s*(.+)$", re.I)
+
+
+def secao_telegrama(header_rid, footer_rid):
+    t, r, b, l = [int(m * TW_CM) for m in MARG_TELEGRAMA]
+    return (f'<w:sectPr><w:headerReference w:type="default" r:id="{header_rid}"/><w:footerReference w:type="default" r:id="{footer_rid}"/>'
+            f'<w:type w:val="nextPage"/><w:pgSz w:w="{A5_TW[0]}" w:h="{A5_TW[1]}"/><w:pgMar w:top="{t}" w:right="{r}" w:bottom="{b}" w:left="{l}" '
+            f'w:header="{int(0.8 * TW_CM)}" w:footer="{int(0.8 * TW_CM)}" w:gutter="0"/><w:cols w:space="708"/></w:sectPr>')
+
+
+def cabecalho_telegrama(ctx, spec):
+    """A linha do topo do telegrama: código e versão, estado na cor dele e página, com um filete embaixo."""
+    est = ESTADOS[spec["estado"]]
+    sep = run("  ·  ", sz=8, cor=sec("404040"))
+    return par(marca(ctx, spec, MARCA_A5) + run(codigo_versao(spec), sz=8, cor=sec("404040")) + sep + run(est["rotulo"].upper(), sz=8, b=True, cor=est["cor"])
+               + sep + (marca_confidencial() if eh_confidencial(spec) else "") + pagina_x_de_y(sz=8, cor=cor_texto(), b=True), jc="center", antes=0, depois=0, linha=240, estilo="Rodape",
+               borda='<w:bottom w:val="single" w:sz="4" w:space="4" w:color="BFBFBF"/>')
+
+
+def telegramas_de(spec):
+    return [t for t in spec.get("telegramas") or [] if isinstance(t, dict)]
+
+
+def corpo_telegrama(corpo):
+    """Título dentro do telegrama sai em negrito, sem número e fora do sumário: o telegrama não tem seções."""
+    return [{"t": "p", "texto": f'**{str(b.get("texto", "")).replace("*", "")}**', "sem_recuo": True}
+            if isinstance(b, dict) and re.match(r"^h[1-5]$", str(b.get("t"))) else b for b in corpo or []]
+
+
+def fechar_com_telegramas(ctx, spec, sect, partes_extra, D):
+    """Fecha a última seção do documento. Com telegramas, ela fecha num parágrafo vazio e cada telegrama segue em A5,
+    numa seção só, um por página."""
+    tels = telegramas_de(spec)
+    if not tels:
+        return sect
+    hdr, ftr = "word/header9.xml", "word/footer9.xml"
+    partes_extra[hdr] = ("hdr", cabecalho_telegrama(ctx, spec))
+    partes_extra[ftr] = ("ftr", par("", antes=0, depois=0, linha=240, estilo="Rodape"))
+    rid_h, rid_f = ctx.rel(D, "header", "header9.xml"), ctx.rel(D, "footer", "footer9.xml")
+    larg = int((A5_TW[0] / TW_CM - MARG_TELEGRAMA[1] - MARG_TELEGRAMA[3]) * TW_CM)
+    out = par("", antes=0, depois=0, linha=240, sect=sect)
+    for i, t in enumerate(tels):
+        out += par(run(f'Telegrama {i + 1} – {t.get("titulo", "")}'), estilo="TituloTelegrama", quebra_antes=i > 0)
+        out += blocos(ctx, corpo_telegrama(t.get("corpo")), D, larg, False)
+    return out + secao_telegrama(rid_h, rid_f)
+
+
 MARG_TIMBRADO = (3.3, 2.0, 3.2, 3.0)   # topo (faixa + bloco de controle), direita, base (logo), esquerda — cm
 MARG_ABNT = (3.3, 2.0, 2.6, 3.0)   # topo (faixa + bloco de controle), direita, base (logo e título), esquerda — cm
 
@@ -1271,12 +1362,15 @@ def montar(spec, ativos, paginas_sumario=None):
     if not longo:
         corpo += par(run(tipo_nome.upper() + (f' – {spec["titulo"]}' if spec.get("titulo") else ""), b=True), estilo="TituloDocumento")
         corpo += par(run(f'{spec["codigo"]}  ·  Versão {spec["versao"]}  ·  Emissão {spec["data_emissao"]}  ·  ', sz=9, cor=sec("404040")) +
-                     run(est["rotulo"].upper(), sz=9, b=True, cor=est["cor"]), jc="center", antes=0, depois=240, linha=240, estilo="SemRecuo")
+                     run(est["rotulo"].upper(), sz=9, b=True, cor=est["cor"])
+                     + (('<w:r><w:br/></w:r>' + run("CONFIDENCIAL", sz=9, b=True, cor=COR_CONFIDENCIAL)
+                         + run(f'  ·  Acesso restrito a: {spec.get("acesso_restrito", "")}', sz=9, cor=sec("404040"))) if eh_confidencial(spec) else ""),
+                     jc="center", antes=0, depois=240, linha=240, estilo="SemRecuo")
         if spec.get("identificacao"):
             ident = spec["identificacao"]   # empresa e documento já estão no cabeçalho
             corpo += bloco_campos(ident, larg_t, 3.3)
         corpo += blocos(ctx, spec.get("corpo", []), D, larg_t, False)
-        corpo += secao(rid_h1, rid_f1, MARG_TIMBRADO, 1.2, 1.2, "nextPage").replace("<w:type w:val=\"nextPage\"/>", "")
+        corpo += fechar_com_telegramas(ctx, spec, secao(rid_h1, rid_f1, MARG_TIMBRADO, 1.2, 1.2, "nextPage").replace("<w:type w:val=\"nextPage\"/>", ""), partes_extra, D)
     else:
         # ---------------- capa (timbrado completo)
         altura = 29.7 - MARG_TIMBRADO[0] - MARG_TIMBRADO[2]
@@ -1295,7 +1389,7 @@ def montar(spec, ativos, paginas_sumario=None):
                   '<w:insideV w:val="single" w:sz="4" w:space="0" w:color="BFBFBF"/></w:tblBorders><w:tblLayout w:type="fixed"/></w:tblPr>'
                   f'<w:tblGrid>{grade(wqs)}</w:tblGrid><w:tr>')
         for (rot, val), wq in zip(ctab, wqs):
-            cor = est["cor"] if rot == "Estado" else cor_texto()
+            cor = est["cor"] if rot == "Estado" else COR_CONFIDENCIAL if rot == "Classificação" and eh_confidencial(spec) else cor_texto()
             quadro += (f'<w:tc><w:tcPr><w:tcW w:w="{wq}" w:type="dxa"/></w:tcPr>'
                        f'{par(run(rot.upper(), sz=7, cor=sec("595959"), esp=10), jc="center", estilo="TabelaTexto", antes=60)}'
                        f'{par(run(val, b=True, sz=9.5, cor=cor), jc="center", estilo="TabelaTexto", depois=60)}</w:tc>')
@@ -1318,8 +1412,9 @@ def montar(spec, ativos, paginas_sumario=None):
         corpo += par(run("FOLHA DE CONTROLE"), estilo="TituloSumario")
         ident = [["Título", spec["titulo"] + (f' – {spec["subtitulo"]}' if spec.get("subtitulo") else "")],
                  ["Tipo", tipo_nome], ["Código", spec["codigo"]], ["Versão", spec["versao"]],
-                 ["Estado", f'**{est["rotulo"].upper()}**'], ["Classificação", spec["classificacao"]],
-                 ["Área responsável", spec.get("area_nome") or AREAS.get(str(spec.get("area", "")).upper(), spec.get("area", ""))],
+                 ["Estado", f'**{est["rotulo"].upper()}**'], ["Classificação", spec["classificacao"]]]
+        if eh_confidencial(spec): ident.append(["Acesso restrito a", spec.get("acesso_restrito", "")])
+        ident += [["Área responsável", spec.get("area_nome") or AREAS.get(str(spec.get("area", "")).upper(), spec.get("area", ""))],
                  ["Elaborado por", spec.get("elaborado_por", "")], ["Revisado por", spec.get("revisado_por", "")],
                  ["Aprovado por", spec.get("aprovado_por") or "Pendente – documento não aprovado"],
                  ["Data de emissão", spec["data_emissao"]],
@@ -1373,7 +1468,7 @@ def montar(spec, ativos, paginas_sumario=None):
             k = entradas.rfind("</w:p>")
             entradas = entradas[:k] + '<w:r><w:fldChar w:fldCharType="end"/></w:r>' + entradas[k:]
         corpo = corpo.replace("@@SUMARIO@@", entradas)
-        corpo += secao(rid_h2, rid_f2, MARG_ABNT, 1.2, 1.2)
+        corpo += fechar_com_telegramas(ctx, spec, secao(rid_h2, rid_f2, MARG_ABNT, 1.2, 1.2), partes_extra, D)
 
     documento = f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document {NS}><w:body>{corpo}</w:body></w:document>'
     ctx.rel(D, "styles", "styles.xml"); ctx.rel(D, "numbering", "numbering.xml"); ctx.rel(D, "settings", "settings.xml")
@@ -1432,7 +1527,7 @@ def partes_fontes(ctx, fontes):
 
 VERSAO_TIMBRADOR = "2026-11-03"
 CAMPOS_FICHA = ["empresa", "tipo", "area", "area_nome", "numero", "ano", "codigo", "versao", "estado", "variante",
-                "titulo", "subtitulo", "titulo_curto", "classificacao", "local", "data_emissao",
+                "titulo", "subtitulo", "titulo_curto", "classificacao", "acesso_restrito", "local", "data_emissao",
                 "elaborado_por", "revisado_por", "aprovado_por", "cargo_aprovador", "data_aprovacao", "vigencia",
                 "substitui", "substituido_por", "motivo_obsoleto", "identificacao", "historico",
                 "modelo", "com_assinatura", "envolvidos", "assinatura_formato", "assinaturas_previstas",
@@ -1690,13 +1785,20 @@ def ler_timbrado(caminho, pasta_midia=None):
             elif c.tag in (_W + "p", _W + "tbl"):
                 elementos.append(c)
     achatar(corpo_xml)
-    # capa do documento longo: tudo até o parágrafo que fecha a 1ª seção
-    for idx, el in enumerate(elementos):
+    # capa do documento longo: tudo até o parágrafo que fecha a 1ª seção. Com telegramas, o parágrafo que fecha o
+    # corpo, logo antes do primeiro telegrama, não conta: o documento curto também o tem.
+    def _estilo_de(el):
         ppr = el.find(_W + "pPr") if el.tag == _W + "p" else None
-        if ppr is not None and ppr.find(_W + "sectPr") is not None:
-            elementos = elementos[idx + 1:]
-            spec.setdefault("variante", "longo")
-            break
+        st = ppr.find(_W + "pStyle") if ppr is not None else None
+        return st.get(_W + "val") if st is not None else None
+    i_tel = next((i for i, el in enumerate(elementos) if _estilo_de(el) == "TituloTelegrama"), len(elementos))
+    secoes = [i for i, el in enumerate(elementos[:i_tel])
+              if el.tag == _W + "p" and el.find(_W + "pPr") is not None and el.find(_W + "pPr").find(_W + "sectPr") is not None]
+    if i_tel < len(elementos) and secoes:
+        secoes.pop()
+    if secoes:
+        elementos = elementos[secoes[0] + 1:]
+        spec.setdefault("variante", "longo")
 
     corpo, destino = [], None     # destino: None=corpo | "ref" | "glo" | ("ap", bloco)
     legenda = None
@@ -1793,6 +1895,11 @@ def ler_timbrado(caminho, pasta_midia=None):
             continue
         if not puro:
             continue
+        if estilo == "TituloTelegrama":
+            m = RE_TELEGRAMA.match(puro)
+            bloco = {"titulo": (m.group(1) if m else puro).strip(), "corpo": []}
+            spec.setdefault("telegramas", []).append(bloco); destino = ("ap", bloco); modo_pular = None; ultimo_lista = None
+            continue
         if estilo == "TituloSumario":
             modo_pular = "controle" if puro.upper().startswith("FOLHA DE CONTROLE") else "sumario"
             continue
@@ -1888,7 +1995,7 @@ def ler_timbrado(caminho, pasta_midia=None):
         if jc in ("center", "right"): b["alinhar"] = jc
         alvo().append(b)
 
-    mapa = {"Título": "titulo", "Classificação": "classificacao", "Área responsável": "area_nome", "Elaborado por": "elaborado_por",
+    mapa = {"Título": "titulo", "Classificação": "classificacao", "Acesso restrito a": "acesso_restrito", "Área responsável": "area_nome", "Elaborado por": "elaborado_por",
             "Revisado por": "revisado_por", "Aprovado por": "aprovado_por", "Data de emissão": "data_emissao", "Substitui": "substitui",
             "Substituído por": "substituido_por", "Motivo da obsolescência": "motivo_obsoleto"}
     for rot, chave in mapa.items():
@@ -2016,7 +2123,12 @@ def conferir_lista(lista, spec, atualizacao=False):
         avisos.append("Documento sem número: a lista mestra registra, mas reserve o número antes de aprovar.")
         return erros, avisos
     mesmo = next((d for d in lista["documentos"] if d.get("codigo") == codigo and d.get("numero")), None)
-    if mesmo and atualizacao and _sem_acento(mesmo.get("titulo")) != _sem_acento(spec.get("titulo")):
+    if mesmo and mesmo.get("confidencial"):
+        # a lista não guarda o título do confidencial: o código só serve para a nova versão do próprio documento
+        if not atualizacao:
+            erros.append(f'O código {codigo} já é de um documento confidencial na lista mestra ({mesmo.get("estado")}, '
+                         f'v{mesmo.get("versao")}). Use o número {proximo_numero(lista, spec):03d} ou gere a nova versão a partir daquele documento.')
+    elif mesmo and atualizacao and _sem_acento(mesmo.get("titulo")) != _sem_acento(spec.get("titulo")):
         avisos.append(f'O título muda nesta versão: "{mesmo.get("titulo")}" passa a "{spec.get("titulo")}". A lista mestra fica com o novo.')
     elif mesmo and _sem_acento(mesmo.get("titulo")) != _sem_acento(spec.get("titulo")):
         erros.append(f'O código {codigo} já é "{mesmo.get("titulo")}" na lista mestra '
@@ -2024,7 +2136,7 @@ def conferir_lista(lista, spec, atualizacao=False):
                      f'ou gere a nova versão a partir daquele documento.')
     elif mesmo and not atualizacao:
         avisos.append(f'{codigo} já estava na lista mestra (v{mesmo.get("versao")}, {mesmo.get("estado")}): a entrada foi atualizada.')
-    homonimo = next((d for d in lista["documentos"] if d.get("codigo") != codigo
+    homonimo = next((d for d in lista["documentos"] if d.get("codigo") != codigo and not d.get("confidencial")
                      and _sem_acento(d.get("titulo")) == _sem_acento(spec.get("titulo"))), None)
     if homonimo:
         avisos.append(f'Já existe {homonimo.get("codigo")} com o mesmo título ("{homonimo.get("titulo")}"). Confirme se não é o mesmo documento.')
@@ -2042,7 +2154,25 @@ def _mesmo_codigo(substituido_por, spec):
     return bool(alvo) and alvo == codigo
 
 
+# Documento confidencial mora numa pasta chamada Confidencial, com permissão só para quem pode ler. A lista mestra fica na
+# pasta comum, aberta a todos: nela o confidencial é só um esqueleto (código, versão, estado e data), para o número não
+# repetir. Título, responsável, projeto e nome do arquivo não vão para a lista. O inventário da pasta comum pula a pasta
+# Confidencial: quem não tem acesso a ela não trava, e quem tem não copia nada dela para a lista.
+TITULO_CONFIDENCIAL = "Documento confidencial"
+CAMPOS_FORA_DO_CONFIDENCIAL = ("responsavel", "arquivo", "projeto", "substituido_por", "plano", "encerrado_por", "rodadas_sha256")
+
+
+def eh_pasta_confidencial(nome):
+    return _sem_acento(nome) == "confidencial"
+
+
 def registro_de(spec, arquivo):
+    if eh_confidencial(spec):
+        return {"codigo": spec["codigo"], "titulo": TITULO_CONFIDENCIAL, "empresa": spec.get("empresa"),
+                "tipo": spec.get("tipo"), "area": spec.get("area"),
+                "numero": int(spec["numero"]) if str(spec.get("numero") or "").isdigit() else None,
+                "ano": spec.get("ano"), "versao": spec.get("versao"), "estado": spec.get("estado"),
+                "data": spec.get("data_aprovacao") or spec.get("data_emissao"), "confidencial": True}
     reg = {"codigo": spec["codigo"], "titulo": spec.get("titulo", ""), "empresa": spec.get("empresa"),
            "tipo": spec.get("tipo"), "area": spec.get("area"),
            "numero": int(spec["numero"]) if str(spec.get("numero") or "").isdigit() else None,
@@ -2413,6 +2543,8 @@ def ficha_rapida(caminho):
                         spec["estado"] = chave
                 if "DOCUMENTO OFICIAL" in cab:
                     spec["estado"] = "OFICIAL"
+                if re.search(r"\bCONFIDENCIAL\b", cab):
+                    spec["classificacao"] = "Confidencial"
                 mo = re.search(r"Aprovado por (.+?) em (\d{2}/\d{2}/\d{4})", cab)
                 if mo:
                     spec["aprovado_por"], spec["data_aprovacao"] = mo.group(1).strip(), mo.group(2)
@@ -2466,9 +2598,11 @@ def inventariar(pasta, destino=None, gravar=True, ignorar=()):
     """Varre a pasta dos documentos e monta a lista mestra do que já existe."""
     pasta = os.path.abspath(pasta)
     ignorar = [i.lower() for i in (ignorar or ())] + [i for i in PASTAS_IGNORADAS]
-    achados, ignorados, sem_id, listas, modelos, visitadas = [], [], [], [], [], set()
+    achados, ignorados, sem_id, listas, modelos, visitadas, puladas = [], [], [], [], [], set(), []
     for raiz, dirs, arquivos in os.walk(pasta):
-        dirs[:] = sorted(d for d in dirs if d.lower() not in ignorar and not d.startswith("."))
+        rel_r = os.path.relpath(raiz, pasta).replace(os.sep, "/")
+        puladas += [d if rel_r == "." else f"{rel_r}/{d}" for d in dirs if eh_pasta_confidencial(d)]   # fora da varredura
+        dirs[:] = sorted(d for d in dirs if d.lower() not in ignorar and not d.startswith(".") and not eh_pasta_confidencial(d))
         rel_raiz = os.path.relpath(raiz, pasta).replace(os.sep, "/")
         visitadas.add("" if rel_raiz == "." else rel_raiz)
         for nome in sorted(arquivos):
@@ -2579,10 +2713,16 @@ def inventariar(pasta, destino=None, gravar=True, ignorar=()):
         if len(itens) > 1:
             multiplos.append((codigo, [f'{i["spec"].get("versao")} {i["spec"].get("estado")}' for i in itens]))
         spec = atual["spec"]
+        for i in itens:
+            if eh_confidencial(i["spec"]):
+                alertas.append(f'{i["rel"]}: documento confidencial fora da pasta Confidencial (está em {i["pasta"]}). '
+                               "Quem tem acesso à pasta comum pode lê-lo: mova-o para a pasta Confidencial.")
         reg = registro_de(spec, atual["nome"])
         reg["pasta"] = atual["pasta"]
         reg["origem"] = atual["origem"]
-        if not reg.get("projeto") and projeto_da_pasta(atual["pasta"]):   # documento antigo, sem o campo na ficha
+        if reg.get("confidencial") and not reg.get("numero"):
+            continue   # confidencial sem número: não reserva nada, e o esqueleto não diria qual é
+        if not reg.get("confidencial") and not reg.get("projeto") and projeto_da_pasta(atual["pasta"]):   # documento antigo, sem o campo na ficha
             reg["projeto"] = projeto_da_pasta(atual["pasta"])
         if len(itens) > 1:
             reg["arquivos"] = len(itens)
@@ -2591,10 +2731,12 @@ def inventariar(pasta, destino=None, gravar=True, ignorar=()):
         lista = _mesclar_em(lista, reg)
         vistos.add(chave_registro(reg))
     # entradas sem arquivo: saem quando a pasta registrada foi varrida (ou é a de Modelos); fora disso, ficam e são avisadas
-    removidas, nao_conferidas, ficam = [], [], []
+    removidas, nao_conferidas, ficam, confidenciais = [], [], [], []
     for d in lista["documentos"]:
         if chave_registro(d) in vistos:
             ficam.append(d); continue
+        if d.get("confidencial"):   # está na pasta Confidencial, que não é varrida
+            confidenciais.append(d.get("codigo")); ficam.append(d); continue
         if "pasta" not in d:
             nao_conferidas.append(f'{d.get("codigo")} (sem pasta registrada)'); ficam.append(d); continue
         p = "" if d["pasta"] == "." else str(d["pasta"])
@@ -2615,6 +2757,7 @@ def inventariar(pasta, destino=None, gravar=True, ignorar=()):
                  "versoes_fora_do_padrao": versoes_ruins, "sem_numero": sem_numero,
                  "ignorados": ignorados, "modelos": modelos, "sem_identificacao": sem_id, "conflitos": conflitos,
                  "varias_versoes": multiplos, "alertas": alertas, "removidas": removidas, "nao_conferidas": nao_conferidas,
+                 "confidenciais": confidenciais, "pastas_confidenciais": puladas,
                  "por_origem": {o: sum(1 for a in achados if a["origem"] == o) for o in ("ficha", "cabecalho", "nome")},
                  "por_tipo": {}, "por_estado": {}, "listas_encontradas": listas}
     for a in achados:
@@ -2660,6 +2803,9 @@ def _mesclar_em(lista, registro):
     novo = dict(antes or {}, **registro)
     # campos que só valem para a entrada obsoleta não sobrevivem à republicação do código
     for k in ("substituido_por", "motivo_obsoleto"):
+        if k not in registro: novo.pop(k, None)
+    # confidencial: o esqueleto apaga o que a entrada tinha antes; deixou de ser confidencial, a marca sai
+    for k in (CAMPOS_FORA_DO_CONFIDENCIAL if registro.get("confidencial") else ("confidencial",)):
         if k not in registro: novo.pop(k, None)
     novo["registrado_em"] = (antes or {}).get("registrado_em", agora)
     novo["atualizado_em"] = agora
@@ -2881,6 +3027,10 @@ def main():
             print(f"  Saíram da lista {len(r['removidas'])} entrada(s) cujo arquivo não está mais na pasta:")
             for x in r["removidas"]:
                 print(f"    {x}")
+        if r["pastas_confidenciais"]:
+            print("  Pasta Confidencial fora da varredura (" + "; ".join(r["pastas_confidenciais"]) + "): o que está nela não entra na lista, nem o título.")
+        if r["confidenciais"]:
+            print(f"  {len(r['confidenciais'])} documento(s) confidencial(is) na lista ficaram sem conferir (estão na pasta Confidencial): " + "; ".join(r["confidenciais"]))
         if r["nao_conferidas"]:
             print(f"  {len(r['nao_conferidas'])} entrada(s) ficaram sem conferir (pasta não varrida): " + "; ".join(r["nao_conferidas"]))
         if r["varias_versoes"]:
@@ -3016,6 +3166,8 @@ def main():
         if not spec.get("elaborado_por"):
             print("AVISO: sem 'elaborado_por': a lista mestra vai registrar a publicação sem responsável.")
     saida = gerar(spec, ativos, a.saida, a.anexo)
+    if eh_confidencial(spec) and not any(eh_pasta_confidencial(x) for x in os.path.abspath(saida).split(os.sep)[:-1]):
+        print(f"AVISO: documento confidencial gravado fora da pasta Confidencial ({saida}): mova-o para lá e apague esta cópia.")
     if lista is not None:
         lista = gravar_lista(a.lista, registro_de(spec, saida))
         print(f"LISTA MESTRA: {lista_caminho(a.lista)} ({len(lista['documentos'])} documentos)")
