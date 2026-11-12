@@ -61,7 +61,7 @@
   .campo-erro { border-color:var(--erro) !important; }
   [hidden] { display:none !important; }
   /* A lista mestra e o campo de número são da publicação: quem só redige nunca os vê. */
-  .lista, .campo-numero { display:none; }
+  .campo-numero { display:none; }   /* o bloco da lista fica sempre à vista: sem ele não há como conectar a pasta nem inventariar */
   body.publicando .lista, body.com-lista .lista, body.conectando .lista, body.com-busca .lista, body.publicando .campo-numero { display:block; }
   /* Progresso da pasta: pela rede, procurar a lista e mapear as pastas leva segundos; a barra mostra que está andando. */
   .progresso { margin-top:8px; font-size:13px; color:var(--suave); }
@@ -3864,7 +3864,10 @@ function capaPdf(pg, spec, tipoNome, larg, x0) {
       const p = await g.raiz.queryPermission({ mode: "readwrite" });
       if (p === "granted") await usarPasta(g.raiz, false);
       else if (p === "prompt") { lembrada = g.raiz; mostrarLista(); }
-    } catch (e) { /* pasta sumiu ou mudou de lugar: fica como estava */ }
+    } catch (e) {   // a reconexão falhou: o botão Reconectar fica à mão e o motivo aparece
+      pasta = null; lista = null; lembrada = g.raiz; mostrarLista();
+      if (e && e.name !== "NotFoundError") msg(`Não foi possível reconectar ${escH(g.raiz.name)}: ${escH(e.message)}`, "erro");
+    }
   })();
   $("lista-conectar").addEventListener("click", conectarLista);
   ["tipo", "empresa", "area", "estado", "projeto"].forEach(id => $(id).addEventListener("change", () => mostrarDestino()));
