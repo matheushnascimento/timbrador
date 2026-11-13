@@ -32,3 +32,9 @@ __pycache__/
 .idea/
 *.swp
 .DS_Store
+
+# --- BMad Method (v7) ---
+# .claude/skills/ (skills do BMad), skills-lock.json, _bmad/ e _bmad-output/ são versionados.
+# Respostas pessoais (_bmad/custom/*.user.toml) e _bmad/render/ já têm .gitignore próprio.
+.bmad-help-setup-modules*.toml
+.v6-v7-migration-backup-*/
